@@ -1937,6 +1937,13 @@ document.addEventListener('keydown', e => {
 });
 
 let projects = [];
+// Building the full grid is the expensive part on a large city — one card per
+// project (~85 on the Work profile). Split out so arriving from a city building
+// can paint the clicked project's modal first and build the grid behind it.
+function renderGrid() {
+  $grid.replaceChildren(...projects.map(renderCard));
+  $empty.hidden = projects.length > 0;
+}
 function render() {
   // Carry unsent item text across the rebuild — otherwise any render (a checkbox
   // elsewhere, a notes panel) wipes what you were halfway through typing.
@@ -1944,8 +1951,7 @@ function render() {
   for (const [id, inp] of addInputs) if (inp.value) carry.set(id, inp.value);
   addInputs.clear();
 
-  $grid.replaceChildren(...projects.map(renderCard));
-  $empty.hidden = projects.length > 0;
+  renderGrid();
   // Same data, same builders — the modal is redrawn with the grid, never after it.
   renderModal();
 
@@ -1966,7 +1972,21 @@ async function load() {
   projects = await api('GET', '/api/projects');
   const live = new Set(projects.flatMap(p => p.items.map(i => i.id)));
   openNotes = new Set([...openNotes].filter(id => live.has(id)));
-  render();
+  const pid = hashPid();
+  if (pid !== null && projects.some(p => p.id === pid)) {
+    // Arrived from a city building (/#p<id>): open that one project's modal
+    // immediately, then build the full grid on the next frame — the modal covers
+    // it anyway, so there's no reason to block the click on rendering every other
+    // project (~85 on the Work city). Also collapses what used to be a double
+    // render: load() + focusFromHash() each called render().
+    modalPid = pid;
+    modalOpening = true;
+    selectedCard = pid;
+    renderModal();
+    requestAnimationFrame(renderGrid);
+  } else {
+    render();
+  }
 }
 
 // Arriving from the city (/#p<id>): blow that project up in the full-screen modal
@@ -1994,7 +2014,7 @@ document.getElementById('newForm').onsubmit = async e => {
   load();
 };
 
-load().then(focusFromHash);
+load();  // load() now handles the arrival hash (#p<id>) itself; hashchange still routes via focusFromHash
 </script>
 </body>
 </html>
