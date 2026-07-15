@@ -3446,17 +3446,25 @@
           tie(-CJIB + 0.5, 4.2); // back-stay
           P(g, ph ? COL.verm : COL.foam, apex - 1, apexY - 2, 2, 2); // beacon
       }
-      // one reusable offscreen canvas per crane, redrawn each frame at the live angle
-      const slewLive = [];
-      function slewCanvas(i) {
-        if (!slewLive[i]) {
+      // The slewing top is identical geometry for every crane, just rotated — so
+      // bake it once per fine angle step (NSLEW steps around the circle) and SHARE
+      // those sprites across all cranes, instead of redrawing each crane live every
+      // frame. At 3-deg steps the motion still reads as smooth, but a city of ~85
+      // cranes costs a per-step bake (once) plus a cache lookup per frame, not ~85
+      // full jib redraws per frame — which is what froze the Work-profile city.
+      const NSLEW = 120;
+      const SLEW_STEP = (2 * Math.PI) / NSLEW;
+      function slewSprite(step, ph) {
+        const nm = "pcSlew" + step;
+        if (!tiles[nm + "#" + ph]) {
           const c = document.createElement("canvas");
           c.width = SLEW_W;
           c.height = SLEW_H;
-          ANCHORX["pcSlewLive" + i] = SLEW_PX + 1;
-          slewLive[i] = c;
+          drawSlew(c.getContext("2d"), step * SLEW_STEP, ph);
+          tiles[nm + "#" + ph] = c;
+          ANCHORX[nm] = SLEW_PX + 1;
         }
-        return slewLive[i];
+        return nm;
       }
 
       pcSprite("pcScaff", 1, 1, 10, 34, 4, (g, ph, x0, y0, a, b, h, cx, cy) => {
@@ -3499,14 +3507,13 @@
         craneRigs = [], // one per crane: its tile, mast height, and slew phase
         skylinePx = 0;
 
+      let lastSkylinePx = -1;
       function rebuildProjects(list) {
         // Grow/shrink the city grid to fit the project count (up to 100 blocks).
         // Rebuilding regenerates the map + PLOTS; buildGround re-rasterizes it.
         const wantGrid = gridForCount(list.length);
-        if (wantGrid !== GRID) {
-          buildCity(wantGrid);
-          buildGround();
-        }
+        const gridChanged = wantGrid !== GRID;
+        if (gridChanged) buildCity(wantGrid); // regenerate map data; ground rasterized below
         PROJECTS = list;
         projObjs = [];
         craneRigs = [];
@@ -3519,7 +3526,9 @@
           const logo = p.logo && Array.isArray(p.logo.cells) ? p.logo : null;
           const nm = "proj" + p.id + "_" + si + "_" + S + "_" + logoKey(logo);
           if (!tiles[nm + "#0"]) towerSprite(nm, si, S, logo);
-          if (!tiles[nm + "@hi#0"]) bakeHalo(nm, nm + "@hi"); // hover highlight
+          // The hover/active halo is baked lazily in draw() for the one active
+          // tower — baking a halo for all ~85 buildings up front was pure load-time
+          // cost for sprites almost none of which are ever highlighted.
           const { px, py } = lot;
           // A 3x3 tower cannot sit centred on a 4x4 pad at whole-tile steps: the
           // old south corner at (px+2,py+2) left a full pad row bare on each of
@@ -3547,7 +3556,14 @@
             for (const [s, x, y] of eq) projObjs.push({ s, x, y, dy: 6 });
           }
         });
-        buildGround(); // taller skyline -> zoom out
+        // buildGround re-sizes the canvas, recomputes the zoom-to-fit and re-
+        // rasterizes the whole static map — expensive. It only needs to run when the
+        // grid or the skyline height (which drives the fit) actually changed, NOT on
+        // every 4s poll where nothing moved. (Window resize has its own listener.)
+        if (gridChanged || skylinePx !== lastSkylinePx) {
+          buildGround();
+          lastSkylinePx = skylinePx;
+        }
         renderPanel();
       }
 
@@ -3557,17 +3573,14 @@
       // angle each frame (drawSlew) rather than snapped to a baked yaw step, so the
       // boom glides between positions. ~0.24 rad/s at the fastest, a real crane's pace.
       function cranesNow(tms) {
-        const slow = Math.floor(tms / 280);
-        return craneRigs.map((r, i) => {
+        return craneRigs.map((r) => {
           const th = r.th0 + 2 * Math.sin(tms * 0.00012 + r.th0);
-          const ph = (Math.floor(r.x + r.y) + slow) & 1; // match the blit's phase pick
-          const c = slewCanvas(i);
-          const cg = c.getContext("2d");
-          cg.clearRect(0, 0, SLEW_W, SLEW_H);
-          drawSlew(cg, th, ph);
-          const nm = "pcSlewLive" + i;
-          tiles[nm + "#0"] = c;
-          tiles[nm + "#1"] = c;
+          const step = ((Math.round(th / SLEW_STEP) % NSLEW) + NSLEW) % NSLEW;
+          // Ensure both phases of this step are baked (cheap: once per step, then
+          // reused by every crane at that angle forever). The 280ms phase swap is
+          // what animates the hook drop / beacon, so the blit needs both.
+          slewSprite(step, 0);
+          const nm = slewSprite(step, 1);
           return { s: nm, x: r.x, y: r.y, dy: slewDy(r.mh) };
         });
       }
@@ -3754,10 +3767,12 @@
           .sort((a, b) => a.x + a.y - (b.x + b.y) || a.y - b.y); // a stable sort keeps it on top
         const act = activePid();
         for (const o of frame) {
-          const lit =
-            o.pid !== undefined && o.pid === act && tiles[o.s + "@hi#0"]
-              ? o.s + "@hi"
-              : null;
+          let lit = null;
+          if (o.pid !== undefined && o.pid === act) {
+            // Bake the halo on demand — only the active tower needs one.
+            if (!tiles[o.s + "@hi#0"]) bakeHalo(o.s, o.s + "@hi");
+            if (tiles[o.s + "@hi#0"]) lit = o.s + "@hi";
+          }
           const nm = lit || o.s;
           const sp = tiles[nm + "#" + ((Math.floor(o.x + o.y) + slow) & 1)];
           const ex = (elev[Math.round(o.y)] || [])[Math.round(o.x)] || 0;
