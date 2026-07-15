@@ -110,21 +110,35 @@ LOGIN_HTML = """<!doctype html><meta charset=utf-8>
 </form>"""
 
 
+LOGIN_ERRORS = {"pw": "WRONG PASSWORD", "rate": "TOO MANY TRIES — WAIT A MINUTE"}
+
+
+def _login_bounce(nxt, err):
+    # Post-Redirect-GET: a failed login answers with a redirect to the GET form
+    # (reason in ?err=), never an inline body on the POST. So reloading the page
+    # is a plain GET — no browser "confirm form resubmission" prompt / ERR_CACHE_MISS,
+    # and the form comes back cleanly with the error shown.
+    args = {"err": err}
+    if nxt:
+        args["next"] = nxt
+    return redirect(url_for("login", **args))
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    error = None
     if request.method == "POST":
         ip = request.remote_addr or "?"
+        nxt = request.args.get("next", "")
         if rate_limited(ip):
-            return render_template_string(LOGIN_HTML, error="TOO MANY TRIES — WAIT A MINUTE"), 429
+            return _login_bounce(nxt, "rate")
         if check_password_hash(PW_HASH, request.form.get("pw", "")):
             session.clear()
             session.permanent = True
             session["ok"] = True
             return redirect(request.args.get("next") or url_for("index"))
         record_attempt(ip)
-        error = "WRONG PASSWORD"
-    return render_template_string(LOGIN_HTML, error=error), (401 if error else 200)
+        return _login_bounce(nxt, "pw")
+    return render_template_string(LOGIN_HTML, error=LOGIN_ERRORS.get(request.args.get("err")))
 
 
 @app.route("/logout", methods=["POST"])
