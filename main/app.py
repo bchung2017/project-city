@@ -723,9 +723,13 @@ def depends_cycles(d, iid, dep):
     return False
 
 
-def project_json(row, items):
+def project_json(row, items, tags=None, item_tags=None):
+    # tags / item_tags may be passed in pre-fetched (bulk list path) to avoid a
+    # per-project query. When omitted (single-project callers after a mutation)
+    # they're fetched here as before.
     d = db()
-    tmap = project_item_tags(d, row["id"])
+    tmap = item_tags if item_tags is not None else project_item_tags(d, row["id"])
+    ptags = tags if tags is not None else project_tags(d, row["id"])
     out = [item_json(i, tmap.get(i["id"], ())) for i in items]
     built = sum(1 for i in out if i["done"])
     days = [day_index(i["start_at"]) for i in out if i["start_at"]]
@@ -737,7 +741,7 @@ def project_json(row, items):
         # The city only renders a project's progress when this is enabled.
         "render_progress": bool(row["render_progress"]),
         # The project's whole tag vocabulary, sent once. Items reference it by id.
-        "tags": project_tags(d, row["id"]),
+        "tags": ptags,
         # The rastered logo grid the city paints onto the tower walls, or null.
         "logo": logo_json(row),
         "logo_size": row["logo_size"],
@@ -836,16 +840,52 @@ def healthz():
 
 @app.get("/api/projects")
 def list_projects():
+    # Bulk-loaded to stay flat in the project count: a profile with dozens of
+    # projects (the baked Work city has ~85) once ran 1 + 3*N queries here — items,
+    # tags and item_tags per project — which, over a remote pooled connection, took
+    # seconds and made the city's 4s poll fall behind and hang. Now it's a constant
+    # 4 queries regardless of N; assembly happens in Python.
     d = db()
     projects = d.execute(
         "SELECT * FROM projects WHERE profile = %s ORDER BY pos, id", (current_profile(),)
     ).fetchall()
-    out = []
-    for p in projects:
-        items = d.execute(
-            "SELECT * FROM items WHERE project_id = %s ORDER BY pos, id", (p["id"],)
-        ).fetchall()
-        out.append(project_json(p, items))
+    if not projects:
+        return jsonify([])
+    pids = [p["id"] for p in projects]
+
+    items_by_p = {}
+    for it in d.execute(
+        "SELECT * FROM items WHERE project_id = ANY(%s) ORDER BY project_id, pos, id", (pids,)
+    ).fetchall():
+        items_by_p.setdefault(it["project_id"], []).append(it)
+
+    tags_by_p = {}
+    for t in d.execute(
+        "SELECT t.*, (SELECT COUNT(*) FROM item_tags it WHERE it.tag_id = t.id) AS n"
+        " FROM tags t WHERE t.project_id = ANY(%s) ORDER BY t.pos, t.id", (pids,)
+    ).fetchall():
+        tags_by_p.setdefault(t["project_id"], []).append(tag_json(t, t["n"]))
+
+    # (project_id, item_id, tag_id) for every applied tag, ordered by tag pos so the
+    # per-item tag lists match the single-project path exactly.
+    itags_by_p = {}
+    for r in d.execute(
+        "SELECT i.project_id, it.item_id, it.tag_id FROM item_tags it"
+        " JOIN items i ON i.id = it.item_id"
+        " JOIN tags  t ON t.id = it.tag_id"
+        " WHERE i.project_id = ANY(%s) ORDER BY t.pos, t.id", (pids,)
+    ).fetchall():
+        itags_by_p.setdefault(r["project_id"], {}).setdefault(r["item_id"], []).append(r["tag_id"])
+
+    out = [
+        project_json(
+            p,
+            items_by_p.get(p["id"], []),
+            tags=tags_by_p.get(p["id"], []),
+            item_tags=itags_by_p.get(p["id"], {}),
+        )
+        for p in projects
+    ]
     return jsonify(out)
 
 
