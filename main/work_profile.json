@@ -1,0 +1,1871 @@
+[
+ {
+  "title": "Dynamic charging",
+  "owner": "Brian",
+  "pos": 0,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: 3 day test at Lockaway on test server",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   },
+   {
+    "text": "Q1 C2: Full scale rollout",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "Admin as source-of-truth v0.1 / respond.io sync",
+  "owner": "Brian",
+  "pos": 1,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: clear project spec (NOT tech spec)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   },
+   {
+    "text": "Q1 C2: Design/scoping complete, week 3 implementation",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "MaintainX System Sync",
+  "owner": "Brian",
+  "pos": 2,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C2: Design complete. Target live in week 2",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "Current drop alert",
+  "owner": "Brian",
+  "pos": 3,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C2: (no clear deliverable set)",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "Maintenance transaction battery insert",
+  "owner": "Brian",
+  "pos": 4,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "Fix hanging transaction",
+  "owner": "Brian, Ney",
+  "pos": 5,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "hudson launch software",
+  "owner": "Samson",
+  "pos": 6,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: web signup and new app version shipped, signup completed through new flow",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   },
+   {
+    "text": "Q1 C2: Billing API dependence",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "PopWheels+ => Zone-based pricing",
+  "owner": "Samson",
+  "pos": 7,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: product and technical product spec complete",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   },
+   {
+    "text": "Q1 C2: Spec complete",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "Referrals",
+  "owner": "Samson",
+  "pos": 8,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "Short swap feedback",
+  "owner": "Yossi",
+  "pos": 9,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: app and web prototype",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   },
+   {
+    "text": "Q1 C2: QA-ready prototype",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "Billing API",
+  "owner": "Ney",
+  "pos": 10,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: shipped, manage products and subscriptions in admin, meeting samson and brian use cases",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   },
+   {
+    "text": "Q1 C2: API done, migration done, tools/management done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "Investigate transaction problems",
+  "owner": "Ney",
+  "pos": 11,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "Dead in slot detection",
+  "owner": "Ney",
+  "pos": 12,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C2: Test on real cabinet",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   },
+   {
+    "text": "Q2 C3: Live across network",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Live across network",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 2,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Maintenance transaction post-deployment",
+  "owner": "Ney",
+  "pos": 13,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "Replace reports with metabase",
+  "owner": "David",
+  "pos": 14,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "Deployments 2.0",
+  "owner": "Ney",
+  "pos": 15,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: (Stretch)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   }
+  ]
+ },
+ {
+  "title": "Access control",
+  "owner": "Ney",
+  "pos": 16,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "Battery forensics tool",
+  "owner": "Samson, Brian",
+  "pos": 17,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "Readiness for LTE batteries",
+  "owner": "Everyone",
+  "pos": 18,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "Integrated financial penalties",
+  "owner": "Interested: yossi, brian, samson",
+  "pos": 19,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "Bad battery return",
+  "owner": "Ney?",
+  "pos": 20,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "Toronto Readiness",
+  "owner": "Brian",
+  "pos": 21,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C2: Escalated to and resolved by CEO",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "Whizz errors",
+  "owner": "Ney, Brian",
+  "pos": 22,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: Emergency",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   }
+  ]
+ },
+ {
+  "title": "Guarantee empty slots / availability alarm",
+  "owner": "Ney, Brian",
+  "pos": 23,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: Deployed",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   }
+  ]
+ },
+ {
+  "title": "Maintenance on SLA, cell divergence alarms",
+  "owner": "Brian",
+  "pos": 24,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: Deployed",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   }
+  ]
+ },
+ {
+  "title": "Rack gateway performance",
+  "owner": "Ney",
+  "pos": 25,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: Testing",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   }
+  ]
+ },
+ {
+  "title": "Non-building containers",
+  "owner": "Ney",
+  "pos": 26,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: Deployed",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   }
+  ]
+ },
+ {
+  "title": "Map-first app launch",
+  "owner": "Samson",
+  "pos": 27,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C1: Deployed",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-01-13",
+    "due_at": "2026-02-10"
+   }
+  ]
+ },
+ {
+  "title": "2x Whizz Bugs",
+  "owner": "Ney",
+  "pos": 28,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C2: Emergency",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "Dead-in-the-slot battery",
+  "owner": "Ney",
+  "pos": 29,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C2: Emergency",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "\"No empty slots\" false alarm fix",
+  "owner": "Brian",
+  "pos": 30,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q1 C2: Emergency",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-02-17",
+    "due_at": "2026-03-03"
+   }
+  ]
+ },
+ {
+  "title": "Battery count v3 (working with Yosef)",
+  "owner": "Brian",
+  "pos": 31,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C3: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   },
+   {
+    "text": "Q3 C1: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 2,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Model decided",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 3,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Self-serve bad battery return",
+  "owner": "Brian",
+  "pos": 32,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Product spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   },
+   {
+    "text": "Q2 C2: Zero-Claude tech spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   },
+   {
+    "text": "Q2 C3: In testing",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 2,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Ready for review for app, live testing on webapp",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 3,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   },
+   {
+    "text": "Q3 C1: Tested, app implementation ready for review",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 4,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Mobile app handoff",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 5,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Hologram audit",
+  "owner": "Brian",
+  "pos": 33,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C4: Report done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Charge cabinet step 2",
+  "owner": "Brian",
+  "pos": 34,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C4: Give a demo",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Data pipeline failure (sla service compute)",
+  "owner": "Brian",
+  "pos": 35,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C4: Deployed",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Power orchestrator updates (data)",
+  "owner": "Brian",
+  "pos": 36,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C3: (Deprioritized)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Deployed",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Slot screen show disable test",
+  "owner": "Ney, Brian",
+  "pos": 37,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C4: Test the feature",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Stripe link direct onboard for ambassadors",
+  "owner": "Ney",
+  "pos": 38,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C3: (Unplanned)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Deployed",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Billing coupon",
+  "owner": "Ney",
+  "pos": 39,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C3: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Deployed",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Performance fixes",
+  "owner": "Ney",
+  "pos": 40,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C2: (Unplanned)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   },
+   {
+    "text": "Q2 C3: (Ongoing)",
+    "completion": 0.4,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Ongoing",
+    "completion": 0.4,
+    "done": 0,
+    "pos": 2,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Transaction errors",
+  "owner": "Ney",
+  "pos": 41,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C4: (Emergency)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Whizz transaction errors",
+  "owner": "Ney",
+  "pos": 42,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C4: (Emergency)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Billing API v2.1",
+  "owner": "Ney",
+  "pos": 43,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C4: All customers migrated to new billing API",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Short swap survey v2",
+  "owner": "Yossi",
+  "pos": 44,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C3: (Yossi has finals)",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Ongoing",
+    "completion": 0.4,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Short swap auto disable for key / lock issue",
+  "owner": "Yossi",
+  "pos": 45,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C3: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "batteryTransaction/check problem",
+  "owner": "Samson",
+  "pos": 46,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C3: (Bugfix)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Send API headers from mobile app",
+  "owner": "Samson",
+  "pos": 47,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C3: (Unplanned)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Additional app analytics",
+  "owner": "Samson",
+  "pos": 48,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C4: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Referrals => self-serve onboarding",
+  "owner": "Samson",
+  "pos": 49,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Full UI mockups and spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   },
+   {
+    "text": "Q2 C2: Tech spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   },
+   {
+    "text": "Q2 C3: (Deprioritized for PWIA)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 2,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Ready to build",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 3,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Whizz partial cabinet support",
+  "owner": "Ney",
+  "pos": 50,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   },
+   {
+    "text": "Q2 C2: Tech spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   },
+   {
+    "text": "Q2 C3: (Priority)",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 2,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   },
+   {
+    "text": "Q2 C4: Pending David prioritization",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 3,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-02",
+    "due_at": "2026-06-16"
+   }
+  ]
+ },
+ {
+  "title": "Battery count v2",
+  "owner": "Brian",
+  "pos": 51,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Planning",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   },
+   {
+    "text": "Q2 C2: In testing",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   },
+   {
+    "text": "Q2 C3: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 2,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   }
+  ]
+ },
+ {
+  "title": "Charge cabinet",
+  "owner": "Brian",
+  "pos": 52,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Modiary cabinet back to Newlab",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   },
+   {
+    "text": "Q2 C2: Charge Whizz battery through barrel plug",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   },
+   {
+    "text": "Q2 C3: Test new firmware (force charge)",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 2,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   }
+  ]
+ },
+ {
+  "title": "Short swap survey",
+  "owner": "Yossi",
+  "pos": 53,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   },
+   {
+    "text": "Q2 C2: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   },
+   {
+    "text": "Q2 C3: Deployed",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 2,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-05-12",
+    "due_at": "2026-05-26"
+   }
+  ]
+ },
+ {
+  "title": "Billing API fixes",
+  "owner": "Ney",
+  "pos": 54,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C2: (Unplanned)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   }
+  ]
+ },
+ {
+  "title": "Firmware updates",
+  "owner": "Brian",
+  "pos": 55,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C2: (No deliverable)",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   }
+  ]
+ },
+ {
+  "title": "Admin fixes",
+  "owner": "Brian",
+  "pos": 56,
+  "render_progress": 1,
+  "profile": "work",
+  "items": []
+ },
+ {
+  "title": "App usability fixes (sites, visible support)",
+  "owner": "Samson",
+  "pos": 57,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   },
+   {
+    "text": "Q2 C2: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   }
+  ]
+ },
+ {
+  "title": "New billing API app support",
+  "owner": "Samson and Ney",
+  "pos": 58,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   },
+   {
+    "text": "Q2 C2: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   }
+  ]
+ },
+ {
+  "title": "Power drop alert",
+  "owner": "Brian",
+  "pos": 59,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   }
+  ]
+ },
+ {
+  "title": "Power limiting",
+  "owner": "Brian",
+  "pos": 60,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Full deployment across network",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   }
+  ]
+ },
+ {
+  "title": "Battery summer 2026 temp analysis",
+  "owner": "Brian",
+  "pos": 61,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Post-deployment",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   }
+  ]
+ },
+ {
+  "title": "Backup server down",
+  "owner": "Brian",
+  "pos": 62,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Deployed",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   }
+  ]
+ },
+ {
+  "title": "Modiary cabinet development",
+  "owner": "Samson",
+  "pos": 63,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C2: One round of testing at 123 St",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-04-21",
+    "due_at": "2026-05-05"
+   }
+  ]
+ },
+ {
+  "title": "Customer experience observability / battery transaction errors",
+  "owner": "Brian (pending), Ney, Maddie",
+  "pos": 64,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q2 C1: Spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-03-31",
+    "due_at": "2026-04-14"
+   }
+  ]
+ },
+ {
+  "title": "PopCart phase 2 support",
+  "owner": "Samson, Ney",
+  "pos": 65,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Webapp in testing",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Passwordless auth",
+  "owner": "Samson",
+  "pos": 66,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: (Stretch)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Battery type mismatch app error message",
+  "owner": "Samson",
+  "pos": 67,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Paused",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Pending",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Banner for user survey",
+  "owner": "Samson",
+  "pos": 68,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C2: Pending",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Short swap precision/recall",
+  "owner": "Yossi/Samson",
+  "pos": 69,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Shipped, ready for live (pending ops)",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Pending",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Short swap experiments",
+  "owner": "Yossi/Samson",
+  "pos": 70,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Ongoing",
+    "completion": 0.4,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Pending",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Billing API migration",
+  "owner": "Ney",
+  "pos": 71,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: All accounts migrated",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Whizz migrate to new transactions",
+  "owner": "Ney",
+  "pos": 72,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Ongoing",
+    "completion": 0.4,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Waiting on Whizz",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Detect non-charging batteries",
+  "owner": "Brian",
+  "pos": 73,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: In testing",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Productionize SLA predictions",
+  "owner": "Brian",
+  "pos": 74,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: In testing",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Audit Hologram/cabinet uptime",
+  "owner": "Brian",
+  "pos": 75,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Hologram dongle tested",
+    "completion": 0.66,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Data to Hologram",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Customer happiness score",
+  "owner": "Yossi/Maddie",
+  "pos": 76,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Published score",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Tech spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "NPS and churn data analysis",
+  "owner": "Yossi/Maddie",
+  "pos": 77,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Spec done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   },
+   {
+    "text": "Q3 C2: Report done/flexible",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 1,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-07-14",
+    "due_at": "2026-07-28"
+   }
+  ]
+ },
+ {
+  "title": "Ops scanner",
+  "owner": "Yossi, Brian",
+  "pos": 78,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: (Backlog)",
+    "completion": 0.15,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   }
+  ]
+ },
+ {
+  "title": "PopCart phase 1 support",
+  "owner": "Samson",
+  "pos": 79,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Friday June 26 test",
+    "completion": 0.3,
+    "done": 0,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   }
+  ]
+ },
+ {
+  "title": "False door closed report",
+  "owner": "Ney",
+  "pos": 80,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   }
+  ]
+ },
+ {
+  "title": "Tax-related bugfix",
+  "owner": "Ney",
+  "pos": 81,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   }
+  ]
+ },
+ {
+  "title": "Temperature alerts not coming to alarms channel",
+  "owner": "Brian",
+  "pos": 82,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Done",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   }
+  ]
+ },
+ {
+  "title": "Show power off slot as red",
+  "owner": "Brian",
+  "pos": 83,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Live across network",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   }
+  ]
+ },
+ {
+  "title": "Cloud-hosted cabinet and battery firmware flashing tools",
+  "owner": "Brian",
+  "pos": 84,
+  "render_progress": 1,
+  "profile": "work",
+  "items": [
+   {
+    "text": "Q3 C1: Shipped and live",
+    "completion": 1.0,
+    "done": 1,
+    "pos": 0,
+    "created_at": "2026-07-15T00:00:00Z",
+    "start_at": "2026-06-23",
+    "due_at": "2026-07-07"
+   }
+  ]
+ }
+]

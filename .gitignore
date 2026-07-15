@@ -1,0 +1,12 @@
+# The database must never be committed — it is your live data, and on Render it
+# lives on a mounted disk at DB_PATH, not in the repo.
+projects.db
+*.db
+
+__pycache__/
+*.pyc
+venv/
+.env
+
+# WSL/Windows download metadata
+*:Zone.Identifier

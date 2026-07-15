@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: project-city
+    runtime: python
+    # No disk needed now — data lives in Supabase Postgres, so the free web
+    # service is enough. (Free instances still sleep when idle; see the note on
+    # keeping both Render and Supabase awake in app.py's DATABASE_URL comment.)
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --chdir main --bind 0.0.0.0:$PORT
+    envVars:
+      # Render generates this once and persists it across deploys, so sessions
+      # survive a push. Never set it by hand.
+      - key: SECRET_KEY
+        generateValue: true
+      # Paste the scrypt hash into the Render dashboard. sync:false keeps it out
+      # of git.
+      - key: PW_HASH
+        sync: false
+      # Supabase Session pooler URI (port 5432 on *.pooler.supabase.com — the
+      # IPv4-compatible host; the direct db.*.supabase.co host is IPv6-only and
+      # Render has no IPv6 egress). Paste it into the Render dashboard; sync:false
+      # keeps this live-data credential out of git.
+      - key: DATABASE_URL
+        sync: false

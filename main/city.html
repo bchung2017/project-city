@@ -1,0 +1,4034 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>Project City — 1.1</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #073a3b;
+      }
+      canvas {
+        display: block;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+      #tag {
+        position: fixed;
+        top: 10px;
+        left: 12px;
+        font: 700 11px/1 monospace;
+        letter-spacing: 2px;
+        color: #ffffff;
+        text-shadow: 2px 2px 0 #073a3b;
+        user-select: none;
+        pointer-events: none;
+      }
+      /* project HUD: one row per project, with the render-progress toggle */
+      #pcp {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        z-index: 6;
+        background: #3b3f44;
+        border: 3px solid #073a3b;
+        box-shadow: 3px 3px 0 rgba(7, 58, 59, 0.35);
+        padding: 6px;
+        min-width: 232px;
+        max-height: 46vh;
+        overflow-y: auto;
+      }
+      #pcp h2 {
+        margin: 2px 4px 6px;
+        font: 700 10px/1 monospace;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #ffcc0f;
+        text-shadow: 2px 2px 0 #073a3b;
+      }
+      .pcrow {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 4px;
+        font: 700 10px/1.4 monospace;
+        letter-spacing: 1px;
+        color: #ffffff;
+      }
+      .pcrow.off .pcname,
+      .pcrow.off .pcstat {
+        opacity: 0.45;
+        text-decoration: line-through;
+      }
+      .pcempty {
+        opacity: 0.6;
+        letter-spacing: 2px;
+      }
+      .pcname {
+        flex: 1;
+        text-transform: uppercase;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        text-shadow: 2px 2px 0 #073a3b;
+      }
+      .pcstat {
+        color: #7fdcff;
+        white-space: nowrap;
+      }
+      .pctog {
+        font: 700 9px/1 monospace;
+        letter-spacing: 1px;
+        cursor: pointer;
+        padding: 3px 5px;
+        min-width: 32px;
+        color: #073a3b;
+        background: #ffcc0f;
+        border: 2px solid #073a3b;
+      }
+      .pcrow.off .pctog {
+        background: #474b50;
+        color: #f0ead6;
+      }
+      .pctog:disabled {
+        opacity: 0.5;
+      }
+      /* handshake: hovering a project tower wires it to a details callout.
+         The whole overlay is click-through so the canvas still gets the click. */
+      #pcc {
+        position: fixed;
+        inset: 0;
+        z-index: 7;
+        pointer-events: none;
+        display: none;
+      }
+      #pccline {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      #pccard {
+        position: absolute;
+        width: 236px;
+        background: #3b3f44;
+        border: 3px solid #073a3b;
+        box-shadow: 3px 3px 0 rgba(7, 58, 59, 0.35);
+        padding: 8px 9px;
+        font: 700 10px/1.5 monospace;
+        letter-spacing: 1px;
+        color: #ffffff;
+      }
+      #pcctitle {
+        font-size: 11px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #ffcc0f;
+        text-shadow: 2px 2px 0 #073a3b;
+        margin-bottom: 5px;
+        overflow-wrap: anywhere;
+      }
+      .pccrow {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .pcck {
+        opacity: 0.62;
+        text-transform: uppercase;
+      }
+      .pccv {
+        color: #7fdcff;
+        white-space: nowrap;
+      }
+      #pccbar {
+        height: 7px;
+        margin: 6px 0 2px;
+        border: 2px solid #073a3b;
+        background: #474b50;
+      }
+      #pccfill {
+        height: 100%;
+        background: #ffcc0f;
+      }
+      #pccitems {
+        margin: 5px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      #pccitems li {
+        display: flex;
+        gap: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      #pccitems li span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #pccitems li.done {
+        color: #8fbf6b;
+      }
+      #pccitems li.more {
+        opacity: 0.55;
+        letter-spacing: 2px;
+      }
+      .pcx {
+        flex: none;
+        width: 8px;
+        opacity: 0.8;
+      }
+      #pcchint {
+        margin-top: 7px;
+        padding-top: 6px;
+        border-top: 2px solid #073a3b;
+        color: #ffcc0f;
+        letter-spacing: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="tag">PROJECT CITY v3.6</div>
+    <canvas id="cv"></canvas>
+    <div id="pcp">
+      <h2>Projects</h2>
+      <div id="pclist"></div>
+    </div>
+    <div id="pcc">
+      <svg id="pccline">
+        <polyline
+          id="pccpath"
+          fill="none"
+          stroke="#FFCC0F"
+          stroke-width="3"
+          stroke-linejoin="miter"
+        />
+        <circle
+          id="pccdot"
+          r="4"
+          fill="#FFCC0F"
+          stroke="#073A3B"
+          stroke-width="2"
+        />
+      </svg>
+      <div id="pccard">
+        <div id="pcctitle"></div>
+        <div id="pccstats"></div>
+        <div id="pccbar"><div id="pccfill"></div></div>
+        <ul id="pccitems"></ul>
+        <div id="pcchint">CLICK TO OPEN &#9654;</div>
+      </div>
+    </div>
+    <script>
+      // =================================================================
+      // Iso tilemap, volumetric sprite pass:
+      // lobed 3-value canopies, baked drop shadows, bulb flowers,
+      // shaded boulders, earth-ledge terraces, dense forest walls.
+      // =================================================================
+      const TW = 32,
+        TH = 16,
+        EH = 8;
+
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      let rand = mulberry32(20260702);
+      const hash = (x, y) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
+
+      const COL = {
+        grass: "#27AE7E",
+        grassD: "#1E9367",
+        grassL: "#33C08D",
+        tall: "#148F63",
+        tallD: "#0E7A55",
+        tallL: "#1FBF85",
+        road: "#3B3F44",
+        roadL: "#474B50",
+        walk: "#F0EAD6",
+        walkD: "#D6D0BE",
+        pad: "#D6D0BE",
+        padD: "#C6C0AE",
+        sand: "#FFE18F",
+        sandD: "#E9C048",
+        water: "#0096E6",
+        waterL: "#40BCF4",
+        foam: "#FFFFFF",
+        waterHL: "#7FDCFF",
+        rock: "#9BA3AB",
+        rockD: "#7C848C",
+        rockDD: "#666C73",
+        cliffL: "#5F656C",
+        cliffB: "#4F545A",
+        rockL: "#BCC2C9",
+        snow: "#FFFFFF",
+        snowD: "#DCE6EF",
+        leafHi: "#25CDCE",
+        leafA: "#00B7B9",
+        leafB: "#008C8E",
+        leafDk: "#046A6C",
+        out: "#073A3B",
+        trunk: "#6E4A2E",
+        trunkD: "#523620",
+        earthL: "#8A6238",
+        earthR: "#6E4A2E",
+        earthD: "#523620",
+        saff: "#FFCC0F",
+        verm: "#F02D0E",
+        cerl: "#0090DC",
+        white: "#F0EAD6",
+        wheel: "#1E2124",
+        win: "#7FDCFF",
+        sh: "rgba(7,58,59,0.35)",
+      };
+      // Takes "#rrggbb" but returns "rgb(r,g,b)", so a colour that has already
+      // been shaded — shade(shade(x)), or a shaded colour handed to a helper
+      // that shades it again — has to parse too. Unhandled, parseInt() gives
+      // NaN, NaN >> 16 is 0, and the result silently paints pure black.
+      function shade(col, f) {
+        const c = (v) => Math.max(0, Math.min(255, Math.round(v * f)));
+        const m = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(col);
+        if (m) return `rgb(${c(+m[1])},${c(+m[2])},${c(+m[3])})`;
+        const n = parseInt(col.slice(1), 16);
+        return `rgb(${c(n >> 16)},${c((n >> 8) & 255)},${c(n & 255)})`;
+      }
+
+      // ---- diamond geometry ----
+      const hw = (y) => (y < TH / 2 ? 2 * (y + 1) : 2 * (TH - y));
+      const edgeY = (i) => Math.floor(TH - (Math.abs(i - 15.5) + 0.5) / 2);
+
+      const mask = document.createElement("canvas");
+      mask.width = TW;
+      mask.height = TH;
+      {
+        const g = mask.getContext("2d");
+        g.fillStyle = "#fff";
+        for (let y = 0; y < TH; y++)
+          g.fillRect(TW / 2 - hw(y), y, hw(y) * 2, 1);
+      }
+
+      // ---- factories ----
+      const tiles = {};
+      function P(g, c, x, y, w, h) {
+        g.fillStyle = c;
+        g.fillRect(x, y, w || 1, h || 1);
+      }
+      // pixel-rasterized ellipse: the volumetric building block
+      function E(g, c, cx, cy, rx, ry) {
+        g.fillStyle = c;
+        for (let dy = -ry; dy <= ry; dy++) {
+          const t = ry ? dy / ry : 0;
+          const w = Math.floor(rx * Math.sqrt(Math.max(0, 1 - t * t)));
+          g.fillRect(cx - w, cy + dy, 2 * w + 1, 1);
+        }
+      }
+      function def(name, w, h, fn) {
+        for (let ph = 0; ph < 2; ph++) {
+          const c = document.createElement("canvas");
+          c.width = w;
+          c.height = h;
+          fn(c.getContext("2d"), ph);
+          tiles[name + "#" + ph] = c;
+        }
+      }
+      function defD(name, fn) {
+        def(name, TW, TH, (g, ph) => {
+          fn(g, ph);
+          g.globalCompositeOperation = "destination-in";
+          g.drawImage(mask, 0, 0);
+        });
+      }
+      function defDpx(name, fn) {
+        defD(name, (g, ph) => {
+          for (let y = 0; y < TH; y++)
+            for (let x = TW / 2 - hw(y); x < TW / 2 + hw(y); x++)
+              P(g, fn(x, y, ph), x, y);
+        });
+      }
+
+      // ---- ground tiles ----
+      [0, 1, 2].forEach((i) =>
+        defD("g" + i, (g) => {
+          P(g, COL.grass, 0, 0, TW, TH);
+          for (let k = 0; k < 5; k++) {
+            const h = hash(k + i * 7, i);
+            P(g, COL.grassD, 4 + (h % 24), 3 + ((h >> 5) % 10), 2, 1);
+          }
+          P(g, COL.grassL, 8 + i * 6, 6 + i, 1, 1);
+        }),
+      );
+      defD("tg", (g, ph) => {
+        P(g, COL.grass, 0, 0, TW, TH);
+        P(g, COL.tall, 0, 4, TW, 12);
+        for (let x = 2; x < TW; x += 5) {
+          P(g, COL.tall, x + ph, 3, 2, 1);
+          P(g, COL.tallD, x + 1, 13, 1, 2);
+        }
+        [7, 15, 23].forEach((x) => P(g, COL.tallL, x + ph, 7, 1, 4));
+      });
+      [
+        ["fR", COL.verm],
+        ["fY", COL.saff],
+        ["fW", "#FFFFFF"],
+      ].forEach(([n, c]) =>
+        defD(n, (g, ph) => {
+          P(g, COL.grass, 0, 0, TW, TH);
+          P(g, COL.grassD, 7, 11, 2, 1);
+          P(g, COL.grassD, 24, 5, 2, 1);
+          P(g, c, 13 + ph, 5, 4, 4);
+          P(g, c === COL.saff ? COL.verm : COL.saff, 14 + ph, 6, 2, 2);
+          P(g, COL.tallD, 15, 9, 1, 3);
+        }),
+      );
+      // flower fields, floaroma-style bulb clusters
+      function bulb(g, c, x, y) {
+        P(g, COL.grassD, x + 1, y + 4, 3, 1); // ground shadow
+        P(g, c, x, y + 1, 5, 3);
+        P(g, c, x + 1, y, 3, 5);
+        P(g, "#FFFFFF", x + 1, y + 1, 2, 1); // top-left sheen
+        P(g, c === COL.saff ? COL.verm : COL.saff, x + 2, y + 2, 1, 1);
+      }
+      [0, 1].forEach((i) =>
+        defD("ff" + i, (g, ph) => {
+          P(g, COL.grass, 0, 0, TW, TH);
+          const cols = i
+            ? [COL.saff, "#FFFFFF", COL.verm, COL.saff]
+            : [COL.verm, COL.saff, "#FFFFFF", COL.verm];
+          [
+            [5, 3],
+            [18, 6],
+            [10, 9],
+            [23, 10],
+          ].forEach((p, k) =>
+            bulb(g, cols[k], p[0] + (k % 2 ? ph : -ph), p[1]),
+          );
+        }),
+      );
+      defD("rd", (g) => {
+        P(g, COL.road, 0, 0, TW, TH);
+        [
+          [6, 4],
+          [19, 8],
+          [26, 11],
+          [11, 12],
+          [22, 3],
+        ].forEach((p) => P(g, COL.roadL, p[0], p[1], 2, 1));
+      });
+      defDpx("cwV", (x, y) => ((x + 2 * y) % 14 < 6 ? COL.foam : COL.road));
+      defDpx("cwH", (x, y) =>
+        (x - 2 * y + 64) % 14 < 6 ? COL.foam : COL.road,
+      );
+      const TCOTTA = [
+        "#CE6B47",
+        "#CE6B47",
+        "#CE6B47",
+        "#DD7E58",
+        "#9EA6AD",
+        "#B8B2A6",
+      ];
+      [0, 1, 2].forEach((i) =>
+        defD("sw" + i, (g) => {
+          for (let y = 0; y < TH; y++)
+            for (let x = TW / 2 - hw(y); x < TW / 2 + hw(y); x++) {
+              const u = Math.floor((x + 2 * y) / 16),
+                v = Math.floor((x - 2 * y + 64) / 16);
+              const seam = (x + 2 * y) % 16 < 1 || (x - 2 * y + 64) % 16 < 1;
+              P(
+                g,
+                seam ? "#5F564C" : TCOTTA[hash(u + i * 5, v + i * 3) % 6],
+                x,
+                y,
+              );
+            }
+          for (let y = TH - 4; y < TH; y++) {
+            P(g, "#8F3F26", TW / 2 - hw(y), y, 2, 1);
+            P(g, "#8F3F26", TW / 2 + hw(y) - 2, y, 2, 1);
+          }
+        }),
+      );
+      defD("pd", (g) => {
+        P(g, COL.pad, 0, 0, TW, TH);
+        [
+          [8, 5],
+          [20, 9],
+          [14, 12],
+          [25, 6],
+        ].forEach((p) => P(g, COL.padD, p[0], p[1], 2, 1));
+      });
+      defD("sd", (g) => {
+        P(g, COL.sand, 0, 0, TW, TH);
+        [
+          [5, 6],
+          [16, 3],
+          [26, 8],
+          [11, 11],
+          [21, 13],
+        ].forEach((p) => P(g, COL.sandD, p[0], p[1], 2, 1));
+      });
+      defD("tr", (g) => {
+        P(g, "#BBA98A", 0, 0, TW, TH);
+        [
+          [6, 4],
+          [17, 7],
+          [25, 10],
+          [11, 11],
+          [21, 3],
+        ].forEach((p) => P(g, "#9C8B70", p[0], p[1], 2, 1));
+        P(g, "#D2C3A4", 14, 6, 2, 1);
+        P(g, "#D2C3A4", 8, 9, 1, 1);
+      });
+      defD("pv", (g) => {
+        P(g, "#9EA6AD", 0, 0, TW, TH);
+        [
+          [7, 5],
+          [19, 8],
+          [13, 12],
+          [24, 4],
+        ].forEach((p) => P(g, "#8C9096", p[0], p[1], 3, 1));
+        for (let y = TH - 3; y < TH; y++) {
+          P(g, "#7C848C", TW / 2 - hw(y), y, 2, 1);
+          P(g, "#7C848C", TW / 2 + hw(y) - 2, y, 2, 1);
+        }
+      });
+      [0, 1].forEach((i) =>
+        defD("w" + i, (g, ph) => {
+          P(g, COL.water, 0, 0, TW, TH);
+          P(g, COL.waterL, 6 + i * 8 + ph * 2, 5 + i * 3, 5, 1);
+          P(g, COL.waterL, 20 - i * 6 - ph * 2, 10 - i * 4, 4, 1);
+        }),
+      );
+      defD("surf", (g, ph) => {
+        P(g, COL.water, 0, 0, TW, TH);
+        P(g, COL.foam, 0, 0, TW, 3 - ph);
+        P(g, COL.waterHL, 0, 3 - ph, TW, 2);
+        P(g, COL.waterL, 12 + ph * 4, 9, 6, 1);
+      });
+      defD("rk", (g) => {
+        P(g, COL.rock, 0, 0, TW, TH);
+        P(g, COL.rockD, 8, 4, 1, 4);
+        P(g, COL.rockD, 19, 9, 4, 1);
+        P(g, COL.rockL, 23, 4, 2, 1);
+        P(g, COL.rockL, 6, 10, 2, 1);
+      });
+      defD("rkD", (g) => {
+        P(g, COL.rockD, 0, 0, TW, TH);
+        P(g, COL.rockDD, 11, 5, 1, 4);
+        P(g, COL.rockDD, 21, 9, 3, 1);
+        P(g, COL.rockL, 7, 11, 2, 1);
+      });
+      defD("sn", (g) => {
+        P(g, COL.snow, 0, 0, TW, TH);
+        [
+          [8, 5],
+          [21, 8],
+          [14, 11],
+        ].forEach((p) => P(g, COL.snowD, p[0], p[1], 2, 1));
+      });
+      defDpx("bw", (x, y) => {
+        const v = (x + 2 * y) % 8;
+        return v < 1 ? "#523620" : v < 2 ? "#A87B4C" : "#8A6238";
+      });
+      defD("wfF", (g, ph) => {
+        P(g, COL.water, 0, 0, TW, TH);
+        P(g, COL.foam, 6 + ph, 3, 5, 2);
+        P(g, COL.foam, 17 - ph, 6, 6, 2);
+        P(g, COL.foam, 10 + ph, 10, 5, 2);
+        P(g, COL.waterHL, 22 - ph * 2, 11, 4, 1);
+      });
+
+      // ---- object sprites: volumetric, shadowed ----
+      // big lobed tree, 24x32
+      def("tree", 24, 32, (g, ph) => {
+        const w = ph;
+        E(g, COL.sh, 12, 29, 9, 2); // drop shadow
+        P(g, COL.out, 10, 21, 5, 8);
+        P(g, COL.trunk, 11, 21, 3, 7);
+        P(g, COL.trunkD, 11, 26, 3, 2);
+        E(g, COL.out, 12 + w, 9, 10, 8);
+        E(g, COL.out, 6 + w, 15, 7, 6);
+        E(g, COL.out, 18 + w, 15, 7, 6);
+        E(g, COL.leafA, 12 + w, 9, 9, 7);
+        E(g, COL.leafA, 6 + w, 15, 6, 5);
+        E(g, COL.leafA, 18 + w, 15, 6, 5);
+        E(g, COL.leafB, 6 + w, 17, 5, 3);
+        E(g, COL.leafB, 18 + w, 17, 5, 3);
+        E(g, COL.leafB, 12 + w, 14, 4, 3);
+        E(g, COL.leafDk, 12 + w, 19, 6, 2);
+        E(g, COL.leafDk, 4 + w, 18, 3, 2);
+        E(g, COL.leafDk, 20 + w, 18, 3, 2);
+        E(g, COL.leafHi, 9 + w, 6, 4, 3);
+        E(g, COL.leafHi, 4 + w, 13, 3, 2);
+        E(g, COL.leafHi, 16 + w, 12, 2, 1);
+        P(g, COL.leafDk, 12 + w, 12, 1, 4); // lobe cleft
+      });
+      // bonsai-round street tree / bush, 16x18
+      def("streetTree", 16, 18, (g, ph) => {
+        E(g, COL.sh, 8, 16, 6, 1);
+        P(g, COL.out, 6, 11, 4, 5);
+        P(g, COL.trunk, 7, 11, 2, 4);
+        E(g, COL.out, 8 + ph, 7, 7, 6);
+        E(g, COL.leafA, 8 + ph, 6, 6, 5);
+        E(g, COL.leafB, 8 + ph, 9, 5, 3);
+        E(g, COL.leafDk, 8 + ph, 11, 4, 1);
+        E(g, COL.leafHi, 5 + ph, 4, 3, 2);
+      });
+      // bulb flower plant, 12x14
+      [
+        ["bR", COL.verm],
+        ["bY", COL.saff],
+        ["bW", "#FFFFFF"],
+      ].forEach(([n, c]) =>
+        def(n, 12, 14, (g, ph) => {
+          E(g, COL.sh, 6, 12, 4, 1);
+          P(g, COL.tallD, 5, 8, 2, 4);
+          E(g, COL.out, 6 + ph, 5, 5, 4);
+          E(g, c, 6 + ph, 5, 4, 3);
+          E(g, shade(c === "#FFFFFF" ? "#DDDDDD" : c, 0.7), 7, 7, 3, 1);
+          P(g, "#FFFFFF", 4, 3, 2, 1);
+          P(g, c === COL.saff ? COL.verm : COL.saff, 6, 5, 1, 1);
+        }),
+      );
+      // boulders
+      def("boulder", 16, 14, (g) => {
+        E(g, COL.sh, 8, 12, 6, 2);
+        E(g, COL.out, 8, 6, 7, 6);
+        E(g, COL.rock, 8, 6, 6, 5);
+        E(g, COL.rockD, 9, 8, 5, 3);
+        E(g, COL.rockDD, 9, 10, 4, 1);
+        E(g, COL.rockL, 5, 4, 3, 2);
+      });
+      def("rockW", 16, 14, (g) => {
+        E(g, COL.out, 8, 6, 7, 6);
+        E(g, COL.rock, 8, 6, 6, 5);
+        E(g, COL.rockD, 9, 8, 5, 3);
+        E(g, COL.rockL, 5, 4, 3, 2);
+        P(g, COL.waterHL, 1, 10, 14, 2);
+        P(g, COL.foam, 2, 9, 4, 1);
+        P(g, COL.foam, 10, 9, 4, 1);
+      });
+      def("palm", 38, 58, (g, ph) => {
+        E(g, COL.sh, 13, 56, 11, 2);
+        for (let t = 0; t <= 40; t++) {
+          // curved trunk, leaning east
+          const y = 54 - t,
+            xo = 10 + Math.round(6 * Math.pow(t / 40, 1.8));
+          P(g, COL.out, xo, y, 5, 1);
+          P(g, "#8A6238", xo + 1, y, 3, 1);
+          if (t % 6 === 2) P(g, COL.trunkD, xo + 1, y, 3, 1);
+        }
+        const fr = (pts) => {
+          // drooping frond: dark under, lit top
+          pts.forEach((p) =>
+            P(g, COL.leafDk, 19 + ph + p[0], 13 + p[1] + 1, 4, 2),
+          );
+          pts.forEach((p) => P(g, COL.leafA, 19 + ph + p[0], 13 + p[1], 4, 1));
+        };
+        fr([
+          [1, -1],
+          [5, 0],
+          [9, 2],
+          [12, 5],
+          [14, 9],
+        ]); // R
+        fr([
+          [-5, -1],
+          [-9, 0],
+          [-13, 2],
+          [-16, 5],
+          [-18, 9],
+        ]); // L
+        fr([
+          [1, -4],
+          [4, -6],
+          [8, -6],
+          [11, -4],
+        ]); // UR
+        fr([
+          [-5, -4],
+          [-8, -6],
+          [-12, -6],
+          [-15, -4],
+        ]); // UL
+        fr([
+          [2, 1],
+          [5, 4],
+          [7, 8],
+          [8, 12],
+        ]); // DR
+        fr([
+          [-6, 1],
+          [-9, 4],
+          [-11, 8],
+          [-12, 12],
+        ]); // DL
+        P(g, COL.out, 15, 14, 8, 5); // coconut pair
+        P(g, COL.trunk, 16, 15, 3, 3);
+        P(g, COL.trunkD, 19, 15, 3, 3);
+      });
+      // sprite name -> pixel column that sits over the object's tile centre
+      const ANCHORX = {};
+      // iso-box cars with shadows
+      function rhomb(g, x0, y0, a, b, c) {
+        g.fillStyle = c;
+        for (let t = 0; t < a + b - 1; t++) {
+          // solid row spans, no checkerboard gaps
+          const iMin = Math.max(0, t - b + 1),
+            iMax = Math.min(a - 1, t);
+          const xL = x0 + 2 * (2 * iMin - t),
+            xR = x0 + 2 * (2 * iMax - t);
+          g.fillRect(xL, y0 + t, xR - xL + 2, 1);
+        }
+      }
+      function isoBox(g, x0, y0, a, b, h, cT, cL, cR) {
+        g.fillStyle = cL;
+        for (let i = 0; i < a; i++)
+          g.fillRect(x0 + 2 * i - 2 * (b - 1), y0 + i + b, 2, h);
+        g.fillStyle = cR;
+        for (let j = 0; j < b; j++)
+          g.fillRect(x0 + 2 * (a - 1) - 2 * j, y0 + a + j, 2, h);
+        rhomb(g, x0, y0, a, b, cT);
+      }
+      // Cars are baked at NYAW yaw steps so they can rotate through a turn
+      // instead of snapping between two axis-aligned sprites. Sprite units are
+      // eighths of a tile, the same as isoBox: screen x = 2*(ux-uy), y = ux+uy.
+      const NYAW = 32;
+      const CAR_W = 36,
+        CAR_H = 30,
+        CAR_OX = 18, // sprite pixel that carries the body's base centre...
+        CAR_OY = 17,
+        CAR_DY = CAR_H - CAR_OY - 3.5; // ...placed exactly where the old sprites put it
+      const isoX = (ux, uy) => CAR_OX + 2 * (ux - uy),
+        isoY = (ux, uy, uz) => CAR_OY + ux + uy - uz;
+      // scanline fill, snapped to whole pixels — no canvas AA, stays pixel art
+      function fillPoly(g, pts, col) {
+        g.fillStyle = col;
+        let yLo = Infinity,
+          yHi = -Infinity;
+        for (const p of pts) {
+          if (p[1] < yLo) yLo = p[1];
+          if (p[1] > yHi) yHi = p[1];
+        }
+        for (let y = Math.floor(yLo); y <= Math.ceil(yHi); y++) {
+          const yc = y + 0.5,
+            xs = [];
+          for (let i = 0; i < pts.length; i++) {
+            const [ax, ay] = pts[i],
+              [bx, by] = pts[(i + 1) % pts.length];
+            if (ay === by || yc < Math.min(ay, by) || yc >= Math.max(ay, by))
+              continue;
+            xs.push(ax + ((yc - ay) / (by - ay)) * (bx - ax));
+          }
+          if (xs.length < 2) continue;
+          xs.sort((p, q) => p - q);
+          for (let i = 0; i + 1 < xs.length; i += 2) {
+            const xL = Math.round(xs[i]),
+              xR = Math.round(xs[i + 1]);
+            const w = Math.max(xs[i + 1] - xs[i] > 0.25 ? 1 : 0, xR - xL);
+            if (w > 0) g.fillRect(xL, y, w, 1);
+          }
+        }
+      }
+      // Extruded box at yaw th about the sprite-space origin (ox,oy): local +x is
+      // forward (length L), +y is right (W), and the box is offset by (fx,fy)
+      // along those local axes before the spin — so a crane's jib can hang off
+      // the mast's pivot the same way a cabin sits on a chassis. Each wall is
+      // shaded from a continuous ramp keyed on its outward normal, so a face
+      // darkens smoothly as it turns away instead of snapping between two tones.
+      function isoPrism(g, ox, oy, th, fx, fy, L, W, z0, z1, cTop, cWall) {
+        const co = Math.cos(th),
+          si = Math.sin(th);
+        const X = (ux, uy) => ox + 2 * (ux - uy),
+          Y = (ux, uy, uz) => oy + ux + uy - uz;
+        const base = [
+          [L / 2, -W / 2],
+          [L / 2, W / 2],
+          [-L / 2, W / 2],
+          [-L / 2, -W / 2],
+        ].map(([lx, ly]) => [
+          (lx + fx) * co - (ly + fy) * si,
+          (lx + fx) * si + (ly + fy) * co,
+        ]);
+        const walls = base.map((p, i) => {
+          const q = base[(i + 1) % 4];
+          // outward normal of edge p->q, and its depth toward the camera
+          const ex = q[0] - p[0],
+            ey = q[1] - p[1],
+            el = Math.hypot(ex, ey);
+          const nx = ey / el,
+            ny = -ex / el;
+          const t = (ny - nx) / Math.SQRT2; // +y face lit, +x face shaded
+          return {
+            d: p[0] + p[1] + q[0] + q[1],
+            f: cWall(t),
+            pts: [
+              [X(p[0], p[1]), Y(p[0], p[1], z0)],
+              [X(q[0], q[1]), Y(q[0], q[1], z0)],
+              [X(q[0], q[1]), Y(q[0], q[1], z1)],
+              [X(p[0], p[1]), Y(p[0], p[1], z1)],
+            ],
+          };
+        });
+        walls.sort((a, b) => a.d - b.d); // painter: far walls first, roof last
+        for (const wl of walls) fillPoly(g, wl.pts, wl.f);
+        fillPoly(
+          g,
+          base.map((p) => [X(p[0], p[1]), Y(p[0], p[1], z1)]),
+          cTop,
+        );
+        return base;
+      }
+      // a car's body and cabin are prisms about the car sprite's own origin
+      const carPrism = (g, th, L, W, z0, z1, cTop, cWall) =>
+        isoPrism(g, CAR_OX, CAR_OY, th, 0, 0, L, W, z0, z1, cTop, cWall);
+      const CARCOLS = [COL.verm, COL.saff, COL.cerl, COL.white];
+      const carName = (n, k) => "car" + n + "y" + k;
+      CARCOLS.forEach((c, n) => {
+        for (let k = 0; k < NYAW; k++) {
+          const th = (k * 2 * Math.PI) / NYAW;
+          def(carName(n, k), CAR_W, CAR_H, (g) => {
+            const co = Math.cos(th),
+              si = Math.sin(th);
+            // shadow: flat puddle sized to the footprint's projected extent, so
+            // it narrows as the car turns end-on to the camera
+            let shW = 0,
+              shH = 0;
+            for (const [lx, ly] of [
+              [4.5, -2],
+              [4.5, 2],
+              [-4.5, 2],
+              [-4.5, -2],
+            ]) {
+              const ux = lx * co - ly * si,
+                uy = lx * si + ly * co;
+              shW = Math.max(shW, Math.abs(2 * (ux - uy)));
+              shH = Math.max(shH, Math.abs(ux + uy));
+            }
+            E(
+              g,
+              COL.sh,
+              CAR_OX,
+              CAR_OY + 6,
+              Math.max(3, Math.round(shW) - 1),
+              Math.max(2, Math.round(shH * 0.5) - 1),
+            );
+            // Only the wheels on the camera-facing flank may be drawn over the
+            // body; the far flank's pair goes behind it, or they show through the
+            // car. Which flank that is depends on yaw: the local +y side faces the
+            // camera when its outward normal (-sin, cos) points down-screen.
+            const side = co - si;
+            const wheels = [
+              [2.5, -1.5],
+              [2.5, 1.5],
+              [-2.5, 1.5],
+              [-2.5, -1.5],
+            ].map(([lx, ly]) => {
+              const ux = lx * co - ly * si,
+                uy = lx * si + ly * co;
+              return {
+                // end-on (side == 0): both flanks are edge-on, so fall back to
+                // depth and let the near end's pair sit in front
+                v: Math.abs(side) < 1e-6 ? ux + uy : ly * side,
+                x: isoX(ux, uy),
+                y: isoY(ux, uy, 0),
+              };
+            });
+            const wheel = (w) => {
+              g.fillStyle = COL.wheel;
+              g.fillRect(Math.round(w.x) - 1, Math.round(w.y) - 1, 3, 4);
+            };
+            wheels.filter((w) => w.v <= 0).forEach(wheel); // far flank, behind body
+            carPrism(g, th, 9, 4, 0, 4, c, (t) => shade(c, 0.635 + 0.12 * t));
+            wheels.filter((w) => w.v > 0).forEach(wheel); // near flank, in front
+            carPrism(g, th, 5, 2, 4, 6, shade(c, 0.9), (t) =>
+              shade(COL.win, 0.9 + 0.1414 * t),
+            );
+          });
+          ANCHORX[carName(n, k)] = CAR_OX;
+        }
+      });
+
+      // parametric low-rise storefront: footprint tx x ty tiles, colored roof,
+      // flat(+AC)/hipped, optional striped awning; anchored at south corner
+      function buildingSprite(nm, o) {
+        const a = 8 * o.tx,
+          b = 8 * o.ty,
+          h = o.h;
+        const nT = o.layers || (o.tier ? 1 : 0);
+        const topRoom =
+          (nT ? Math.floor(h * 0.95) : 0) +
+          (o.spire ? 10 : 0) +
+          (o.garden ? 8 : 0) +
+          (o.cap ? 24 : 0) +
+          (o.round ? 4 : 0) +
+          (o.ell ? 10 : 0);
+        const x0 = 2 * b,
+          w = 2 * (a + b) + 2,
+          y0 = 6 + topRoom;
+        ANCHORX[nm] = 2 * a + 1;
+        const PAR = 4;
+        def(nm, w, y0 + a + b + h + 2, (g, ph) => {
+          const cx = x0 + a - b + 1,
+            cyc = y0 + ((a + b) >> 1); // footprint center (px)
+
+          // ================= round body: full drum =================
+          if (o.round) {
+            const r = Math.min(a, b) + 6,
+              ry = r >> 1;
+            for (let i = -r; i <= r; i++) {
+              const ed = Math.floor(
+                ry * Math.sqrt(Math.max(0, 1 - (i * i) / (r * r))),
+              );
+              const c =
+                i < -r / 3
+                  ? shade(o.body, 1.08)
+                  : i > r / 3
+                    ? shade(o.body, 0.72)
+                    : o.body;
+              P(g, c, cx + i, cyc - h + ed, 1, h);
+              P(g, COL.out, cx + i, cyc + ed - 1, 1, 1); // base rim
+            }
+            E(g, o.accent, cx, cyc - h, r, ry); // parapet ring
+            E(g, shade(o.body, 0.7), cx, cyc - h, r - 3, Math.max(2, ry - 2));
+            for (const bandY of [Math.floor(h * 0.3), Math.floor(h * 0.6)])
+              for (let i = -r + 4; i <= r - 5; i += 5) {
+                const ed = Math.floor(ry * Math.sqrt(1 - (i * i) / (r * r)));
+                P(g, COL.win, cx + i, cyc - h + ed + bandY, 2, 3);
+              }
+            for (let i = -2; i <= 2; i++) {
+              // entrance
+              const ed = Math.floor(ry * Math.sqrt(1 - (i * i) / (r * r)));
+              P(g, "#1E2124", cx + i, cyc - h + ed + h - 7, 1, 7);
+            }
+            if (o.garden)
+              [
+                [-8, -2],
+                [7, -3],
+                [0, 2],
+              ].forEach(([dx, dy], k) => {
+                E(g, COL.leafDk, cx + dx, cyc - h + dy, 4, 2);
+                E(g, COL.leafA, cx + dx, cyc - h + dy - 1 - (ph & k & 1), 4, 2);
+              });
+            if (o.spire) {
+              P(g, COL.out, cx, cyc - h - ry - 8, 2, 9);
+              P(g, ph ? COL.verm : COL.foam, cx, cyc - h - ry - 10, 2, 2);
+            }
+            return;
+          }
+
+          // ================= L-shape: NW tower + full-width south block =================
+          if (o.ell) {
+            const ah = a >> 1,
+              bh = b >> 1,
+              bb = b - bh;
+            isoBox(
+              g,
+              x0,
+              y0 - 8,
+              ah,
+              bh,
+              h + 8,
+              shade(o.body, 0.62),
+              shade(o.body, 1.05),
+              shade(o.body, 0.8),
+            ); // tower
+            for (let i = 0; i < ah; i++)
+              P(g, o.accent, x0 + 2 * i - 2 * (bh - 1), y0 - 8 + i + bh, 2, 3);
+            for (let j = 1; j < bh - 1; j += 2)
+              P(
+                g,
+                COL.win,
+                x0 + 2 * (ah - 1) - 2 * j,
+                y0 - 8 + ah + j + 4,
+                2,
+                h,
+              );
+            const sx0 = x0 - 2 * bh,
+              sy0 = y0 + bh;
+            isoBox(
+              g,
+              sx0,
+              sy0,
+              a,
+              bb,
+              h,
+              shade(o.body, 0.7),
+              o.body,
+              shade(o.body, 0.78),
+            ); // south block
+            const L2 = (i) => [sx0 + 2 * i - 2 * (bb - 1), sy0 + i + bb];
+            const R2 = (j) => [sx0 + 2 * (a - 1) - 2 * j, sy0 + a + j];
+            for (let i = 0; i < a; i++) {
+              const p = L2(i);
+              P(g, o.accent, p[0], p[1], 2, PAR);
+            }
+            for (let j = 0; j < bb; j++) {
+              const p = R2(j);
+              P(g, shade(o.accent, 0.82), p[0], p[1], 2, PAR);
+            }
+            for (let i = 1; i < a - 1; i++) {
+              const p = L2(i);
+              P(g, "#2A2E33", p[0], p[1] + h - 7, 2, 7);
+              for (let wy = PAR + 2; wy <= h - 11; wy += 5)
+                P(
+                  g,
+                  i & 1 ? COL.win : shade("#7FDCFF", 0.85),
+                  p[0],
+                  p[1] + wy,
+                  2,
+                  3,
+                );
+            }
+            const dmm = a >> 1;
+            for (let i = dmm - 1; i <= dmm; i++) {
+              const p = L2(i);
+              P(g, "#1E2124", p[0], p[1] + h - 7, 2, 7);
+            }
+            for (let j = 1; j < bb - 1; j++) {
+              const p = R2(j);
+              for (let wy = PAR + 2; wy <= h - 6; wy += 5)
+                P(g, COL.win, p[0], p[1] + wy, 2, 3);
+            }
+            g.fillStyle = COL.out;
+            for (let i = 0; i < a; i++) {
+              const p = L2(i);
+              g.fillRect(p[0], p[1] + h - 1, 2, 1);
+            }
+            for (let j = 0; j < bb; j++) {
+              const p = R2(j);
+              g.fillRect(p[0], p[1] + h - 1, 2, 1);
+            }
+            return;
+          }
+
+          // ================= cooper: perforated metal + diagonal gash =================
+
+          // ================= prism body =================
+          isoBox(
+            g,
+            x0,
+            y0,
+            a,
+            b,
+            h,
+            shade(o.body, 0.7),
+            o.body,
+            shade(o.body, 0.78),
+          );
+          const L = (i) => [x0 + 2 * i - 2 * (b - 1), y0 + i + b];
+          const R = (j) => [x0 + 2 * (a - 1) - 2 * j, y0 + a + j];
+
+          // ---- layered setbacks ----
+          let rise = 0,
+            cL = 0;
+          for (let k = 1; k <= nT; k++) {
+            const c = 3 * k,
+              ak = a - 2 * c,
+              bk = b - 2 * c;
+            if (ak < 4 || bk < 4) break;
+            const hk = Math.max(5, Math.floor(h * (0.5 - 0.15 * (k - 1))));
+            rise += hk;
+            cL = c;
+            isoBox(
+              g,
+              x0,
+              y0 + 2 * c - rise,
+              ak,
+              bk,
+              hk,
+              shade(o.body, 0.62),
+              shade(o.body, 0.92),
+              shade(o.body, 0.72),
+            );
+            for (let i = 0; i < ak; i++)
+              P(
+                g,
+                o.accent,
+                x0 + 2 * i - 2 * (bk - 1),
+                y0 + 2 * c - rise + i + bk,
+                2,
+                2,
+              );
+            for (let j = 1; j < bk; j += 2)
+              P(
+                g,
+                COL.win,
+                x0 + 2 * (ak - 1) - 2 * j,
+                y0 + 2 * c - rise + ak + j + 2,
+                2,
+                Math.max(2, hk - 4),
+              );
+          }
+          if (!nT && !o.cap && !o.garden) {
+            const rcx = x0 + 2 * (a >> 1) - 2 * (b >> 1),
+              rcy = y0 + (a >> 1) + (b >> 1) - 4;
+            isoBox(g, rcx, rcy, 3, 3, 3, "#C6C0AE", "#9EA6AD", "#7C848C");
+          }
+
+          // ---- roof caps ----
+          if (o.cap === "dome") {
+            const dr = Math.min(a, b) * 2 - 14,
+              ry2 = dr >> 1,
+              dH = Math.floor(dr * 0.75);
+            for (let i = -dr; i <= dr; i++) {
+              const t = i / dr,
+                q = Math.sqrt(Math.max(0, 1 - t * t));
+              const ed = Math.floor(ry2 * q * 0.5),
+                hg = Math.floor(dH * q);
+              const c =
+                t < -0.3
+                  ? shade(o.accent, 1.15)
+                  : t > 0.35
+                    ? shade(o.accent, 0.72)
+                    : o.accent;
+              P(g, c, cx + i, cyc - hg, 1, hg + ed + 1); // column: silhouette to front rim
+              P(g, shade(o.accent, 0.5), cx + i, cyc + ed, 1, 1); // base contact
+            }
+            for (const ri of [-(dr >> 1), 0, dr >> 1]) {
+              // meridian ribs
+              const q = Math.sqrt(1 - (ri * ri) / (dr * dr));
+              P(
+                g,
+                shade(o.accent, 0.55),
+                cx + ri,
+                cyc - Math.floor(dH * q),
+                1,
+                Math.floor(dH * q) + Math.floor(ry2 * q * 0.5) + 1,
+              );
+            }
+            P(g, COL.foam, cx, cyc - dH - 2, 2, 2); // finial
+          } else if (o.cap === "pyr") {
+            for (let k = 0; k < 3; k++) {
+              const c = 2 + 2 * k,
+                ak = a - 2 * c,
+                bk = b - 2 * c;
+              if (ak < 2 || bk < 2) break;
+              isoBox(
+                g,
+                x0,
+                y0 + 2 * c - 4 * (k + 1),
+                ak,
+                bk,
+                4,
+                shade(o.body, 0.8 - 0.06 * k),
+                shade(o.body, 0.7 - 0.06 * k),
+                shade(o.body, 0.56 - 0.06 * k),
+              );
+            }
+            P(g, o.accent, x0, y0 + 12 - 13, 2, 2); // tip accent
+          } else if (o.cap === "cyl") {
+            const dr = Math.min(a, b),
+              ry3 = dr >> 1,
+              dh = 8;
+            for (let i = -dr; i <= dr; i++) {
+              const t = i / dr,
+                q = Math.sqrt(Math.max(0, 1 - t * t));
+              const ed = Math.floor(ry3 * q * 0.5);
+              const c =
+                t < -0.33
+                  ? shade(o.accent, 1.06)
+                  : t > 0.33
+                    ? shade(o.accent, 0.7)
+                    : shade(o.accent, 0.9);
+              P(g, c, cx + i, cyc - dh + ed, 1, dh);
+              P(g, shade(o.accent, 0.5), cx + i, cyc + ed - 1, 1, 1); // base contact
+            }
+            for (let i = -dr + 3; i <= dr - 4; i += 4) {
+              const ed = Math.floor(
+                (ry3 >> 1) * Math.sqrt(1 - (i * i) / (dr * dr)),
+              );
+              P(g, COL.win, cx + i, cyc - dh + ed + 2, 2, 3);
+            }
+            E(g, o.accent, cx, cyc - dh, dr, Math.max(2, ry3 >> 1)); // rim ring
+            E(
+              g,
+              shade(o.body, 0.68),
+              cx,
+              cyc - dh,
+              dr - 3,
+              Math.max(1, (ry3 >> 1) - 1),
+            );
+          } else if (o.cap === "hex") {
+            const hx = Math.min(a, b) + 2,
+              fw = Math.floor((2 * hx) / 3);
+            P(g, shade(o.accent, 1.12), cx - hx, cyc - 14, fw, 12);
+            P(g, o.accent, cx - hx + fw, cyc - 16, fw, 14);
+            P(
+              g,
+              shade(o.accent, 0.7),
+              cx - hx + 2 * fw,
+              cyc - 14,
+              2 * hx - 2 * fw,
+              12,
+            );
+            P(g, COL.out, cx - hx + fw, cyc - 16, 1, 14);
+            P(g, COL.out, cx - hx + 2 * fw, cyc - 16, 1, 14);
+            for (let i = -hx + 2; i < hx - 2; i += 4)
+              P(g, COL.win, cx + i, cyc - 9, 2, 3);
+            E(g, shade(o.body, 0.72), cx, cyc - 16, hx, Math.max(2, hx >> 2));
+          }
+
+          if (o.garden) {
+            // full rooftop garden
+            rhomb(g, x0, y0 + 4, a - 4, b - 4, "#27AE7E"); // lawn over the deck
+            for (let k = 0; k < 12; k++) {
+              // lawn mottling
+              const ci = (k * 5 + 1) % (a - 5),
+                cj = (k * 7 + 2) % (b - 5);
+              P(g, "#1E9367", x0 + 2 * ci - 2 * cj, y0 + 4 + ci + cj, 2, 1);
+            }
+            for (
+              let k = a >> 1;
+              k < a - 3;
+              k++ // paver path to the south corner
+            )
+              P(g, "#D6D0BE", x0, y0 + 2 * k, 2, 2);
+            isoBox(g, x0, y0 + 2, a - 8, 2, 2, "#8A6238", "#6E4A2E", "#523620"); // NE hedge bed
+            for (let i = 0; i < a - 8; i++) {
+              const px = x0 + 2 * i - 1,
+                py = y0 + 2 + i;
+              P(g, COL.leafDk, px, py - 2, 2, 2);
+              P(g, COL.leafA, px, py - 3 - (ph & i & 1), 2, 2);
+            }
+            isoBox(
+              g,
+              x0 - 2,
+              y0 + 3,
+              2,
+              b - 8,
+              2,
+              "#8A6238",
+              "#6E4A2E",
+              "#523620",
+            ); // NW hedge bed
+            for (let j = 0; j < b - 8; j++) {
+              const px = x0 - 2 * j - 3,
+                py = y0 + 4 + j;
+              P(g, COL.leafDk, px, py - 2, 2, 2);
+              P(g, COL.leafA, px, py - 3 - (ph & j & 1), 2, 2);
+            }
+            [
+              [6, 9],
+              [10, 5],
+              [12, 11],
+            ].forEach(([ci, cj], k) => {
+              // shrubs on the lawn
+              const sx2 = x0 + 2 * ci - 2 * cj + 1,
+                sy2 = y0 + ci + cj;
+              E(g, COL.leafDk, sx2, sy2, 3, 2);
+              E(g, COL.leafA, sx2, sy2 - 1 - (ph & k & 1), 3, 2);
+              E(g, COL.leafHi, sx2 - 1, sy2 - 2, 1, 1);
+            });
+            const tcx = x0 + 1,
+              tcy = y0 + 8; // corner tree
+            P(g, COL.out, tcx - 1, tcy - 6, 3, 6);
+            P(g, COL.trunk, tcx, tcy - 6, 1, 5);
+            E(g, COL.out, tcx, tcy - 9, 5, 4);
+            E(g, COL.leafA, tcx, tcy - 10, 4, 3);
+            E(g, COL.leafB, tcx, tcy - 8, 3, 2);
+            E(g, COL.leafHi, tcx - 2, tcy - 11, 2, 1);
+          }
+          if (o.spire) {
+            const sx0 = nT ? x0 + 1 : x0 + 1,
+              sy0 = nT ? y0 + 2 * cL - rise : y0;
+            P(g, COL.out, sx0, sy0 - 8, 2, 9);
+            P(g, "#9EA6AD", sx0, sy0 - 5, 2, 1);
+            P(g, ph ? COL.verm : COL.foam, sx0, sy0 - 10, 2, 2);
+          }
+
+          // ---- parapet band ----
+          for (let i = 0; i < a; i++) {
+            const p = L(i);
+            P(g, o.accent, p[0], p[1], 2, PAR);
+            P(g, shade(o.accent, 0.8), p[0], p[1] + PAR, 2, 1);
+          }
+          for (let j = 0; j < b; j++) {
+            const p = R(j);
+            P(g, shade(o.accent, 0.82), p[0], p[1], 2, PAR);
+            P(g, shade(o.accent, 0.66), p[0], p[1] + PAR, 2, 1);
+          }
+
+          // ---- SW face ----
+          for (let i = 1; i < a - 1; i++) {
+            const p = L(i);
+            P(g, "#2A2E33", p[0], p[1] + h - 7, 2, 7);
+            if (i % 2) P(g, "#3E464D", p[0], p[1] + h - 6, 2, 2);
+          }
+          if (o.duplex) {
+            // mixed-unit: second tone + second door
+            for (let i = 1; i <= a >> 1; i++) {
+              const p = L(i);
+              P(g, o.alt, p[0], p[1] + PAR + 1, 2, h - PAR - 9);
+            }
+            for (let i = (a >> 2) - 1; i <= a >> 2; i++) {
+              const p = L(i);
+              P(g, "#1E2124", p[0], p[1] + h - 7, 2, 7);
+            }
+          }
+          const dm = Math.floor(a / 2);
+          for (let i = dm - 1; i <= dm; i++) {
+            const p = L(i);
+            P(g, o.accent, p[0], p[1] + h - 8, 2, 1);
+            P(g, "#1E2124", p[0], p[1] + h - 7, 2, 7);
+          }
+          if (o.curve) {
+            // rounded bay turret on the SW face
+            const p = L(Math.floor(a * 0.7)),
+              bx = p[0] + 1,
+              byTop = p[1] + PAR + 1,
+              bh2 = h - 9 - PAR,
+              r = 5;
+            for (let i = -r; i <= r; i++) {
+              const ed = Math.floor(
+                2.5 * Math.sqrt(Math.max(0, 1 - (i * i) / (r * r))),
+              );
+              const c =
+                i < -1
+                  ? shade(o.body, 1.14)
+                  : i > 2
+                    ? shade(o.body, 0.66)
+                    : shade(o.body, 0.95);
+              P(g, c, bx + i, byTop - ed, 1, bh2 + ed);
+            }
+            P(g, COL.win, bx - 1, byTop + 3, 2, bh2 - 6);
+            P(g, shade("#7FDCFF", 0.7), bx + 2, byTop + 4, 1, bh2 - 8);
+          }
+          if (o.glassL) {
+            for (let i = 1; i < a - 1; i++) {
+              const p = L(i);
+              P(
+                g,
+                i % 3 ? COL.win : shade("#7FDCFF", 0.6),
+                p[0],
+                p[1] + PAR + 1,
+                2,
+                h - 13,
+              );
+              for (let m = p[1] + PAR + 5; m < p[1] + h - 8; m += 5)
+                P(g, shade("#7FDCFF", 0.55), p[0], m, 2, 1);
+            }
+          } else {
+            for (let i = 1; i < a - 1; i++) {
+              const p = L(i);
+              for (let wy = PAR + 2; wy <= h - 11; wy += 5)
+                P(
+                  g,
+                  i & 1 ? COL.win : shade("#7FDCFF", 0.85),
+                  p[0],
+                  p[1] + wy,
+                  2,
+                  3,
+                );
+            }
+          }
+          if (o.balc) {
+            for (let s = 0; s < o.balc; s++) {
+              const by = h - 13 - s * 6;
+              if (by < PAR + 3) break;
+              for (let i = 1; i < a - 1; i++) {
+                const p = L(i);
+                P(g, "#D6D0BE", p[0] - 1, p[1] + by, 3, 2);
+                P(g, shade("#D6D0BE", 0.7), p[0] - 1, p[1] + by + 2, 3, 1);
+                if (i % 3 === 1) {
+                  P(g, COL.leafA, p[0], p[1] + by - 2, 2, 2);
+                  P(g, COL.leafDk, p[0] + 1, p[1] + by - 1, 1, 1);
+                } else P(g, COL.out, p[0], p[1] + by - 1, 1, 1);
+              }
+            }
+          }
+
+          // ---- SE face ----
+          if (o.glassR) {
+            for (let j = 1; j < b - 1; j++) {
+              const p = R(j);
+              P(
+                g,
+                j % 3 ? COL.win : shade("#7FDCFF", 0.5),
+                p[0],
+                p[1] + PAR + 1,
+                2,
+                h - PAR - 7,
+              );
+              for (let m = p[1] + PAR + 5; m < p[1] + h - 6; m += 5)
+                P(g, shade("#7FDCFF", 0.45), p[0], m, 2, 1);
+            }
+          } else {
+            for (let j = 1; j < b - 1; j++) {
+              const p = R(j);
+              P(g, "#2A2E33", p[0], p[1] + h - 6, 2, 6);
+              for (let wy = PAR + 2; wy <= h - 10; wy += 5) {
+                P(g, COL.win, p[0], p[1] + wy, 2, 3);
+                P(g, shade("#7FDCFF", 0.7), p[0], p[1] + wy + 3, 2, 1);
+              }
+            }
+          }
+
+          {
+            const c = L(0);
+            g.fillStyle = COL.out;
+            g.fillRect(c[0], c[1], 1, h);
+          }
+          g.fillStyle = COL.out;
+          for (let i = 0; i < a; i++) {
+            const p = L(i);
+            g.fillRect(p[0], p[1] + h - 1, 2, 1);
+          }
+          for (let j = 0; j < b; j++) {
+            const p = R(j);
+            g.fillRect(p[0], p[1] + h - 1, 2, 1);
+          }
+        });
+      }
+      const BVARIANTS = [
+        {
+          tx: 2,
+          ty: 2,
+          h: 16,
+          body: "#E86A4E",
+          accent: COL.saff,
+          gr: "pv",
+          balc: 1,
+          garden: 1,
+          curve: 1,
+        }, // deli
+        {
+          tx: 2,
+          ty: 2,
+          h: 18,
+          body: "#F0EAD6",
+          accent: COL.cerl,
+          gr: "pv",
+          cap: "dome",
+        }, // pharmacy
+        {
+          tx: 2,
+          ty: 2,
+          h: 14,
+          body: "#FFC93C",
+          accent: COL.verm,
+          gr: "pv",
+          cap: "cyl",
+        }, // chicken spot
+        {
+          tx: 2,
+          ty: 3,
+          h: 26,
+          body: "#5B8BB0",
+          accent: "#7FDCFF",
+          gr: "pv",
+          layers: 2,
+          glassR: 1,
+        }, // foot doctor
+        {
+          tx: 3,
+          ty: 2,
+          h: 17,
+          body: "#E8E1CE",
+          accent: COL.leafA,
+          gr: "pv",
+          cap: "pyr",
+          balc: 1,
+        }, // laundromat
+        {
+          tx: 2,
+          ty: 2,
+          h: 16,
+          body: "#7BB661",
+          accent: COL.saff,
+          gr: "pv",
+          ell: 1,
+        }, // bodega (L-plan, corner tower)
+        {
+          tx: 2,
+          ty: 2,
+          h: 24,
+          body: "#C86FA0",
+          accent: "#FFFFFF",
+          gr: "pv",
+          tier: 1,
+          spire: 1,
+        }, // barber
+        {
+          tx: 3,
+          ty: 2,
+          h: 28,
+          body: "#6E7A88",
+          accent: COL.cerl,
+          gr: "pv",
+          glassL: 1,
+          glassR: 1,
+          cap: "hex",
+          spire: 1,
+        }, // office
+        {
+          tx: 2,
+          ty: 3,
+          h: 16,
+          body: "#E8944A",
+          accent: COL.leafA,
+          gr: "pv",
+          layers: 2,
+          duplex: 1,
+          alt: "#7BB661",
+        }, // florist (mixed-unit)
+      ];
+      BVARIANTS.forEach((v, i) => buildingSprite("bldg" + i, v));
+      const COOPER_W = 82,
+        COOPER_H = 75,
+        COOPER_AX = 28;
+      const COOPER_PAL = [
+        "#A6C2D0",
+        "#4E85B3",
+        "#29476D",
+        "#8F99A2",
+        "#5C697F",
+        "#2E6397",
+        "#7B8898",
+        "#F1F5F6",
+        "#CBD9DF",
+        "#E5E7E6",
+        "#AAAEAE",
+        "#C3C4C2",
+        "#FCFBF9",
+        "#043165",
+        "#A1A09D",
+        "#070000",
+        "#000000",
+      ];
+      const COOPER_PIX =
+        "..................................................ABC............................." +
+        "..............................................DEDADBF............................." +
+        "...........................................GEHIIJAEIAFB..........................." +
+        "........................................EKLDLMMAIJLMJAAAIIGHE....................." +
+        ".......................................EEAIKMMMBBJJHMMAAIADAG....................." +
+        "......................................AEEBBJHIHBFBBHIHAADBAEIEBB.................." +
+        "......................................AKDGBAJBJBFBBJBHIIMHHHHDBAAB................" +
+        "...................................EGHEGDBDAHHMBNFAHMMIJMHHHHHABBBHIE............." +
+        "...............................DAAAJIIDKGBBBIHHJDGHJHFAMIBEGJJBGHIJDEKD..........." +
+        ".......................HHHHIIIJHLAIAHHJJJGEBAAJMJJHABCAMANFFBIIIHHHHDGKKDK........" +
+        ".......................HIIIAAAAHAAIIJLHHMABBIIHHHMHAAFDJIDBFFIMHJHJDFEGGDLOOJ....." +
+        "........................AAADAAAHABAMJLJHMAFEIMHHHHHMMAAJMIGNFJHJMHLFFGKKGGILID...." +
+        "................GGGBBBBBBBBAIFAMABBAMMHHJGCGJHHHHHHHHMMHMACBAIIJIDIIIAADENAEEEEC.." +
+        "..............DDGLJAFBBABBAIANFAAAADHIHMKGLIHHHHHHHHHHHHJADHLDIAGGLMJIDCCCEEGEEGKL" +
+        "..............KIGILFFFFBNKMMLNFFBIMMJAJMOOMHHHHHHHHHHHHMIAMJCAHDEAEHLJMIBBBCILDKAH" +
+        "..............EGGDGCCFFFBBAHJJHIJHHHHHHHHHHHHHHHHHHHHHJJHHJHAJHMLGHHHHHJJJJADDDGE." +
+        "..............EEEGENGJNFFBBBDMMHHHHHHHHHHHHHHHHHHMJKHJHHHJHMJHMHHJHHHHMLDLLDEAIDG." +
+        "..............EGELIEDHFNFFBBBGAHMHHHHHHHHHHHHMHHHJJIHHDGAAEEKHJJHJHMMIIKGKLAAAKKD." +
+        "...............KGILDIJCFBFCFBFBAAIMMHHHHHHHMJKJHHHIHHMFGHKPCEHHHMHHLILLADDGDEGGGD." +
+        "..............KGEIDGMJCBBKABNFFFBDDDMHMMMHHJJAJJKKHHJHLGOIKILGIIKJLGAAGEDKEGDADDD." +
+        "..............KEEJLOHHKEEKHICFFFFBFFJMIIJHHJHHHIKDALLHMDGJLLMEKKGLDEDAECDKEGIAAA.." +
+        "..............LOLIIJHMJEENFIIKCFFFBBBIDDIMHHHHJJHLGEOLIHMONCIDKKOKGGGKEFKGGDDGA..." +
+        "...........IIAIGGEEKMHJFBCNNBMKMBNFFBBIMHHHHJJIHLLHEGEGJLEDIIGDDDDDDIACFAGEAIBC..." +
+        "........GJGCFFDOGOLLLKJAFFFNCFIMEEDFBBIMIIJIHJJHHJHIDJLKDGBGDGDGGKGACDEFAGNBBBBBL." +
+        ".......BGGGBBBBCEDDDLODJJABCNNIIIDGJAFIMAGDJKMMHMMMHGLLGEFFDGEDEEAGAGAAFNBEKIKGOO." +
+        "......GGGGGGABBCFEEGDDDJLJACFNDEBFGMIFIMAEGJFEEIJKKKKKKGFBEDGDADDDGIKBBDDAIOLOGGD." +
+        "..........AAABBBBFFFGGGLKLLAACKCNNBMJDJMIKLJEGEKKEEGLKDBBBGGDAAAAAAFFEKHMLKEGDDGG." +
+        "..OOOOOAAAAAABBBBFNNFGEGKKKLLIHBFNEMHMHHMHJJKJIGEGGOGIGFBADDDAAKGEDEDIJLLDGEDDDOG." +
+        "KKKKKKEAAAAJHABBBFCNNFFEEKOEOJLABFGHMHHHJLLJLOKEEOOKGIEFAJAAAGGDGNEHHHLGDOOKOEGKE." +
+        "EEGGGGGGADAHHABBBBBBNNNFGGEGKOGJMHIDJHJHLDKKLOGDKKKKDNFFBAAAKCCAMJJJKKDGKDGGGEGOE." +
+        "ECEKJJJJJBFDMJAACFFBFNNFBBEEGDJLHIBCBMLLLAAGGKGEGLJCNNCFBIANNFAMMIEKGOGEODGGGJLOL." +
+        "DEEEEEGIIEFAHHHJFNFBBBBFCCEGEGGLOGDIAILLKDDGDGIECFCNNFBCNFBCAIMLDLDEGOODDOIDEDKO.." +
+        ".EECCEOAALIIAFAMIABCBAFNNNFFEGDGOKKLLAADGGGDJIHIGFFBNCCFBLILMIKECDKDDDDOGGLDEDOE.." +
+        ".EECNEGEJGDABCFHMDEBBBFFNNNNNFGEKKEKLDDDDAIIMMHMAFBFNNNAHMMMKDECCGGDDGGGGDODODDG.." +
+        ".EENNGGELCCFFBFJMOGGBBFBFCNNNNFCGGEKKDLLLJMMHMHMANFNNCCDJJLLDGKECDEGGGDEEOOGDGKL.." +
+        ".EECCGGGGEFNNBALLMKGABBBBBFNNNNNFEEDLAHMMMHHHAAIKFNCNCFCGKEGDGOECKGGGDOGEDDGEDLI.." +
+        ".EEGGEGGDOBNNEHMKJIKIABBBBBFCNNFFFEKMMHHHHIIIFGCBBNNNCCFEEOODGNQCOOGEGDOKGDKDAKE.." +
+        ".EEGGEEJEGFNNCGHJHHHIGDDBBBBFFNFFCCGHHHJHKFBFIKCCCNNNCCFGKGEGKENCGODDLKGDDGLILOE.." +
+        ".KDEGGEBGOFNNCGDGIHHHJAADBBFBBBNNFNFMMGFBBBIJHJHDNNNNCFNEKDKEKENCOGEGOGEGGDJLOGG.." +
+        ".DODGGGNEOFNNCGGGDIMMMIDGAABBBBFFFNCGDFNBAIHMMMIGNNNNCCDKOLEGKCQCDDGKOOOODGILKKG.." +
+        ".ECEDGCNEGCNNNGDDGDLDGHLIAAABBBBBFNFFCAAIHMMHLLKENNNNNCGKEEDOOCEDGDKKOKLLKLGOLKE.." +
+        ".GEEGENNEGCNNNGEOGEGEEHMJJIIIIIALDBAIAHMMMHILOOKENNNNNFGOGELDKCEAGOLKLKGEELGEOOE.." +
+        ".DKGECNPEGCNNNGCKGCEGGIMLJMMMMMJMIIMMMHHJJIKOOOKENNNNNCDKOADGACEKDKLKGKGCEOOGOLK.." +
+        "..EDENNCEECNNNEEGECCEGGIAIMHHHHHHHHHHHJMLDODOOGOENNNNNCGOOLDDKCGIKADLCGIOOOOKLJH.." +
+        "..GGCNEGGGCNNNCENCFFEEEEGIMHHHHHHHHHHHKJIKOGGKDDGFQPPCFGKKKOLACEAKKQILGGOOGLOIH..." +
+        "..CFCNCNEECNNNEECEEFEEEGGDAJHHHHHHMIGLKILOOOGOOLGFENNCCDLLLKAAECCCJGOOGGOOOOKKO..." +
+        "..CFFCCNEECNNNCECFFNCEEGDGGKMHHHMKGOELKLKGOOOGGOGCCFCCCALECFCCPEKGKGOOEGOOOJ......" +
+        "..CFFNCFEEBCNNFECECCEEEDDOGDMHMMJKDOKOCOOGOKOGECEEEIIKCEKKKDDKOOKOOEOOGOOEO......." +
+        "..NCCCCBEFBCNNFFFECCBEEGEEEGJMIILKKIDCNGDGOKDGKOKLKMHLGGKKLLIJLLLLOEOKGEGE........" +
+        "..NNNFNCFCFCNNFFFEECEBEGECEEKLKOLIIKCNNGGGOODGAMMJLILKLLKOOLLLLLLKGGOGEEEE........" +
+        "..NFNNNNCNCCNNCCFFFEEEFGEFEEODKKIHLCNCCOOGDEDEELHILOKLLKKLOKKKOKKEDKGCCEEE........" +
+        "...NFFFNCNCCNNFFEFFFEFFFEFFCEKKIIDEEEEEDKADFLKCEOAILLLLLKKJOLKDLJOOJEEG..........." +
+        "...FFNNNCNNNQNDBFCEEEFNFEFFEEOKKGEEEEEOKDADCKLJIOEEKIKKKOKJDLDKLIJEED............." +
+        "...BBFNNFNCNQNECFFCEECCFCFFEEOOGGGGGKDKKKAAGKLILDDLOGLLLKDLKDKJKEDG..............." +
+        "...FFNNNNNNNNNECEECCCFFFFCCFEOKEGKADKKKKKLLKKLLLLLLKOOLLLOKOIGGGE................." +
+        "....FFFNNNNNQNFCEEECCFFFCCFFEKKKDKAAKLKAALLKKJLLLLKLLKKOKJHEECC..................." +
+        ".....BFNNFFNNNCCEEEECCFFCFFFCEKAAAAAKAAAALLLLJLLLLKLKDKLKODCNN...................." +
+        "......BFFBFNNFCFFEEECNCCEEFFNNAAADDAKAAIIJJLKLLLLKOKKLOKGNCCC....................." +
+        ".......CFFFNNCCFFFFGENCPCCCCNNAAIENAIAILLAALDOLLKKKOLJECCGL......................." +
+        ".........BBNPNNFFFCEENGNECCFNNKAICCIHJKENQCJOLGEGLLGJENDJ........................." +
+        "..........FNNNCCFFFECCENEEEGAAIIIIIIDCLHGNCKOOKLGGHENF............................" +
+        "...........FFNNNCCCFEFENCEEEDHIKDLMHLNLLDLIKJKEILECB.............................." +
+        ".............FNNNNNFEGGNCEENEIOLJLLHOQDLKIJAMHECFFC..............................." +
+        ".............FFNNFFCFEGCEEECGLKKJJIHKGDKKIMIDMGCC................................." +
+        "..............FFFBBNCEEFEEEGDIIKIMJLJJKLILDGDABB.................................." +
+        "................FFFNNBCCCCEGDIIAIJLOJLLLJGNCIF...................................." +
+        ".................NNNNNNFCEEEGLLLJIKLJIIAGCNF......................................" +
+        "...................FNNNFFEEEGLLAJHHHLCFBB........................................." +
+        "....................BFNNFFEEEALIJHMICGL..........................................." +
+        "....................FFNBCFBEGLDJMIGFF............................................." +
+        "......................AACNBDFMJDBBFN.............................................." +
+        "......................IBFNEAGAABFFF..............................................." +
+        ".........................BBBAFFBB................................................." +
+        ".........................IAFFBB..................................................." +
+        "............................B.....................................................";
+
+      // 41 Cooper Square: rastered from reference photo, indexed bitmap
+      def("bldg9", COOPER_W, COOPER_H, (g) => {
+        for (let y = 0; y < COOPER_H; y++)
+          for (let x = 0; x < COOPER_W; x++) {
+            const c = COOPER_PIX[y * COOPER_W + x];
+            if (c !== ".")
+              P(
+                g,
+                COOPER_PAL["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij".indexOf(c)],
+                x,
+                y,
+                1,
+                1,
+              );
+          }
+      });
+      ANCHORX["bldg9"] = COOPER_AX;
+      // --- St Aidan's: the church campus on its lot at the foot of the north
+      // ridge, facing SW across the city to the water. Flat iso geometry, not a
+      // photo raster: a white chapel block, a gabled tabernacle, a low entry
+      // porch, a lawn squared to the tile grid and a path square to the walk.
+      //
+      // Sprite space: units are eighths of a tile, the convention the cars use —
+      // screen x = 2*(u-v), y = u+v-z, u running SE (down-right), v running SW
+      // (down-left). The lot is CHTX x (CHTY-1) tiles = 48 x 32 units; its north
+      // corner sits at (OX, OY), which puts the lot's south corner exactly on
+      // the sidewalk edge — that is what the object's dy: 9 buys.
+      const CHURCH_W = 179,
+        CHURCH_H = 120,
+        CHURCH_AX = 97;
+      const CH = {
+        lawn: "#35C58C", // mown lot, a shade brighter than the wild grass
+        lawnDk: "#1E9367",
+        kerb: "#D6D0BE", // concrete rim: the lawn meets the walk flush
+        kerbDk: "#B9B4A4",
+        path: "#E0DAC6",
+        pathDk: "#C3BCA6",
+        wallT: "#E3EAF1", // sunlit wall (SW face)
+        wallD: "#B7C3D0", // shaded wall (SE face)
+        deck: "#9FAAB6", // flat roof deck — grey, never blown out
+        cap: "#C9D2DA", // parapet cap
+        roof: "#AEB9C4", // tabernacle roof slope
+        roofSeam: "#9AA5B1",
+        roofRidge: "#D3DBE3",
+        roofEave: "#7D8894",
+        band: "#2C63A6", // blue base course, sunlit
+        bandD: "#1E4B80", // blue base course, shaded
+        glass: "#5895E1",
+        glassD: "#004EAC",
+        door: "#173F72",
+        leaf: "#27AE7E",
+        leafDk: "#177C57",
+      };
+      def("church", CHURCH_W, CHURCH_H, (g) => {
+        const OX = CHURCH_AX - 16,
+          OY = CHURCH_H - 89;
+        const pt = (u, v, z) => [OX + 2 * (u - v), OY + u + v - (z || 0)];
+        const quad = (c, a, b, d, e) => fillPoly(g, [a, b, d, e], c);
+        // top face of a volume at height z
+        const top = (u0, v0, u1, v1, z, c) =>
+          quad(c, pt(u0, v0, z), pt(u1, v0, z), pt(u1, v1, z), pt(u0, v1, z));
+        // the only two faces the camera can see: SW (v = v1) and SE (u = u1)
+        const faceSW = (u0, u1, v, z0, z1, c) =>
+          quad(c, pt(u0, v, z1), pt(u1, v, z1), pt(u1, v, z0), pt(u0, v, z0));
+        const faceSE = (v0, v1, u, z0, z1, c) =>
+          quad(c, pt(u, v0, z1), pt(u, v1, z1), pt(u, v1, z0), pt(u, v0, z0));
+        // window bands: evenly spaced lights punched along a wall
+        const winSW = (u0, u1, v, z0, z1, step, w) => {
+          for (let u = u0; u + w <= u1; u += step) {
+            faceSW(u, u + w, v, z0, z1, CH.glass);
+            faceSW(u, u + w, v, z1, z1 + 1, CH.glassD); // lintel
+          }
+        };
+        const winSE = (v0, v1, u, z0, z1, step, w) => {
+          for (let v = v0; v + w <= v1; v += step) {
+            faceSE(v, v + w, u, z0, z1, CH.glass);
+            faceSE(v, v + w, u, z1, z1 + 1, CH.glassD); // lintel
+          }
+        };
+
+        // ---- the lot: lawn squared to the tile grid, concrete rim all round --
+        top(0, 0, 48, 32, 0, CH.kerbDk);
+        top(0, 0, 47, 31, 0, CH.kerb);
+        top(2, 2, 46, 30, 0, CH.lawnDk);
+        top(2, 2, 45, 29, 0, CH.lawn);
+
+        // ---- path: straight out of the porch, square to the sidewalk --------
+        top(18, 22, 24, 32, 0, CH.pathDk);
+        top(18, 22, 23, 31, 0, CH.path);
+
+        // ---- chapel: white block, flat grey roof, blue base course ----------
+        {
+          const u0 = 3,
+            u1 = 16,
+            v0 = 5,
+            v1 = 17,
+            h = 24;
+          faceSW(u0, u1, v1, 0, h, CH.wallT);
+          faceSE(v0, v1, u1, 0, h, CH.wallD);
+          faceSW(u0, u1, v1, 0, 5, CH.band);
+          faceSE(v0, v1, u1, 0, 5, CH.bandD);
+          winSW(5, 15, v1, 8, 13, 4, 2);
+          winSW(5, 15, v1, 16, 21, 4, 2);
+          winSE(6, 13, u1, 9, 14, 4, 2);
+          top(u0, v0, u1, v1, h, CH.deck);
+          // parapet: a light cap rim with the deck recessed inside it
+          faceSW(u0, u1, v1, h, h + 2, CH.cap);
+          faceSE(v0, v1, u1, h, h + 2, CH.cap);
+          top(u0, v0, u1, v1, h + 2, CH.cap);
+          top(u0 + 1, v0 + 1, u1 - 1, v1 - 1, h + 2, CH.deck);
+          // rooftop plant
+          top(5, 7, 10, 12, h + 5, CH.cap);
+          faceSW(5, 10, 12, h + 2, h + 5, CH.wallD);
+          faceSE(7, 12, 10, h + 2, h + 5, CH.deck);
+        }
+
+        // ---- tabernacle: long gabled hall. Walls carry the blue base course;
+        // the roof shows its near slope, its ridge and a sliver of the far
+        // slope, which is all the camera can see of a gable this pitch. -------
+        {
+          const u0 = 25,
+            u1 = 44,
+            v0 = 5,
+            v1 = 17,
+            vm = 11,
+            zE = 16,
+            zR = 24;
+          faceSW(u0, u1, v1, 0, zE, CH.wallT);
+          faceSE(v0, v1, u1, 0, zE, CH.wallD);
+          faceSW(u0, u1, v1, 0, 5, CH.band);
+          faceSE(v0, v1, u1, 0, 5, CH.bandD);
+          winSW(27, 43, v1, 7, 12, 4, 2);
+          // gable end, then the roof laid over it with a verge overhang
+          fillPoly(
+            g,
+            [pt(u1, v0, zE), pt(u1, vm, zR), pt(u1, v1, zE)],
+            CH.wallD,
+          );
+          const rL = pt(u0 - 1, vm, zR),
+            rR = pt(u1 + 1, vm, zR),
+            eL = pt(u0 - 1, v1 + 1, zE - 1),
+            eR = pt(u1 + 1, v1 + 1, zE - 1),
+            bL = pt(u0 - 1, v0 - 1, zE - 1),
+            bR = pt(u1 + 1, v0 - 1, zE - 1);
+          fillPoly(g, [bL, bR, rR, rL], CH.roofEave); // far slope, in shade
+          fillPoly(g, [rL, rR, eR, eL], CH.roof); // near slope
+          for (let u = u0 + 3; u < u1; u += 5) {
+            // standing seams, ridge to eave
+            const a = pt(u, vm, zR),
+              b = pt(u, v1 + 1, zE - 1);
+            fillPoly(g, [a, [a[0] + 1, a[1]], [b[0] + 1, b[1]], b], CH.roofSeam);
+          }
+          fillPoly(
+            g,
+            [eL, eR, [eR[0], eR[1] + 2], [eL[0], eL[1] + 2]],
+            CH.roofEave,
+          ); // fascia
+          fillPoly(
+            g,
+            [rL, rR, [rR[0], rR[1] + 1], [rL[0], rL[1] + 1]],
+            CH.roofRidge,
+          ); // ridge cap
+        }
+
+        // ---- entry porch: low link between the two volumes, on the path -----
+        {
+          const u0 = 14,
+            u1 = 28,
+            v0 = 16,
+            v1 = 23,
+            h = 11;
+          faceSW(u0, u1, v1, 0, h, CH.wallT);
+          faceSE(v0, v1, u1, 0, h, CH.wallD);
+          faceSW(18, 24, v1, 0, 8, CH.door); // doors, on the path's centre line
+          faceSW(u0, u1, v1, h, h + 2, CH.cap);
+          faceSE(v0, v1, u1, h, h + 2, CH.cap);
+          top(u0, v0, u1, v1, h + 2, CH.cap);
+          top(u0 + 1, v0 + 1, u1 - 1, v1 - 1, h + 2, CH.deck);
+          // step down to the path
+          top(18, 23, 24, 25, 2, CH.kerb);
+          faceSW(18, 24, 25, 0, 2, CH.kerbDk);
+        }
+
+        // ---- shrubs: two flanking the path, two on the open lawn ------------
+        for (const [u, v, r] of [
+          [15, 27, 4],
+          [27, 27, 4],
+          [7, 25, 5],
+          [39, 25, 5],
+        ]) {
+          const [x, y] = pt(u, v, 0);
+          E(g, CH.leafDk, x, y - 3, r, r - 1);
+          E(g, CH.leaf, x - 1, y - 5, r - 1, r - 2);
+        }
+      });
+      ANCHORX["church"] = CHURCH_AX;
+
+      // --- street furniture (upright sprites, shadow-anchored, 2-phase) ---
+      // planter: square box, foliage mound; canopy sways like the trees
+      def("planter", 16, 16, (g, ph) => {
+        const w = ph;
+        E(g, COL.sh, 8, 15, 6, 1);
+        isoBox(g, 8, 8, 3, 3, 3, "#C6C0AE", "#9EA6AD", "#7C848C"); // stone box
+        E(g, COL.leafDk, 8 + w, 6, 5, 3);
+        E(g, COL.leafA, 8 + w, 5, 5, 3);
+        E(g, COL.leafB, 9 + w, 4, 3, 2);
+        E(g, COL.leafHi, 6 + w, 4, 2, 1);
+      });
+      // bench: iso slats, backrest, legs
+      [
+        ["benchA", 1],
+        ["benchB", 0],
+      ].forEach(([nm, alongA]) =>
+        def(nm, 24, 14, (g) => {
+          E(g, COL.sh, 12, 13, 7, 1);
+          const seat = "#8A6238",
+            slat = "#6E4A2E";
+          if (alongA) {
+            isoBox(g, 8, 6, 6, 2, 2, seat, slat, shade(seat, 0.7));
+            P(g, slat, 6, 2, 12, 2);
+          } // backrest
+          else {
+            isoBox(g, 16, 6, 2, 6, 2, seat, shade(seat, 0.7), slat);
+            P(g, slat, 16, 2, 4, 8);
+          }
+        }),
+      );
+      // fountain: 2x2-tile basin, animated jet + ripples
+      def("fountain", 68, 46, (g, ph) => {
+        E(g, COL.sh, 34, 44, 22, 2);
+        isoBox(g, 34, 8, 16, 16, 5, "#B8B2A6", "#9EA6AD", "#7C848C");
+        rhomb(g, 34, 12, 12, 12, COL.water);
+        for (let k = 0; k < 8; k++) {
+          const i = 2 + ((k * 5) % 10),
+            j = 2 + ((k * 3) % 10);
+          P(
+            g,
+            ph ? COL.waterHL : COL.waterL,
+            34 + 2 * (i - j),
+            12 + i + j,
+            3,
+            1,
+          );
+        }
+        isoBox(g, 34, 20, 3, 3, 5, "#C6C0AE", "#9EA6AD", "#7C848C");
+        P(g, COL.foam, 33, 15 - ph, 2, 6);
+        P(g, COL.waterHL, 31, 19, 6, 1);
+      });
+      // trash can
+      def("bin", 10, 14, (g) => {
+        E(g, COL.sh, 5, 13, 3, 1);
+        isoBox(g, 5, 6, 2, 2, 5, "#3B6E5A", "#2E5647", "#24463A");
+        P(g, "#24463A", 4, 5, 4, 1);
+      });
+      // iso-box deco factory: multi-tile pieces share the building anchor convention
+      function isoDeco(nm, tx, ty, h, cT, cL, cR, decorate) {
+        const a = 8 * tx,
+          b = 8 * ty,
+          x0 = 2 * b,
+          w = 2 * (a + b) + 2,
+          y0 = 8;
+        ANCHORX[nm] = 2 * a + 1;
+        def(nm, w, y0 + a + b + h + 2, (g, ph) => {
+          E(g, COL.sh, 2 * a, y0 + a + b + h, Math.min(a, b) + 6, 2);
+          isoBox(g, x0, y0, a, b, h, cT, cL, cR);
+          if (decorate) decorate(g, ph, x0, y0, a, b, h);
+        });
+      }
+      // long planters, foliage mounds riding the box
+      [
+        ["pltA", 2, 1],
+        ["pltB", 1, 2],
+      ].forEach(([nm, tx, ty]) =>
+        isoDeco(
+          nm,
+          tx,
+          ty,
+          4,
+          "#C6C0AE",
+          "#9EA6AD",
+          "#7C848C",
+          (g, ph, x0, y0, a, b) => {
+            const n = Math.max(a, b) / 4;
+            for (let k = 0; k < n; k++) {
+              const ci = a > b ? 2 + k * 4 : a >> 1,
+                cj = a > b ? b >> 1 : 2 + k * 4;
+              const cx = x0 + 2 * ci - 2 * cj + 1,
+                cy = y0 + ci + cj;
+              E(g, COL.leafDk, cx + ph, cy - 2, 4, 2);
+              E(g, COL.leafA, cx + ph, cy - 3, 4, 2);
+              E(g, COL.leafHi, cx - 2 + ph, cy - 4, 1, 1);
+              if (k % 2) E(g, COL.leafB, cx + 1 + ph, cy - 4, 2, 2);
+            }
+          },
+        ),
+      );
+      // skate ledges: low concrete slabs with pale coping + grind scuffs
+      [
+        ["ldgA", 3, 1],
+        ["ldgB", 1, 3],
+      ].forEach(([nm, tx, ty]) =>
+        isoDeco(
+          nm,
+          tx,
+          ty,
+          3,
+          "#D6D0BE",
+          "#B8B2A6",
+          "#9EA6AD",
+          (g, ph, x0, y0, a, b) => {
+            g.fillStyle = "#F0EAD6"; // coping edge
+            if (a > b)
+              for (let i = 0; i < a; i++) g.fillRect(x0 + 2 * i, y0 + i, 2, 1);
+            else
+              for (let j = 0; j < b; j++) g.fillRect(x0 - 2 * j, y0 + j, 2, 1);
+            g.fillStyle = "#7C848C"; // scuffs
+            for (let k = 3; k < Math.max(a, b); k += 5)
+              g.fillRect(a > b ? x0 + 2 * k : x0 - 2 * k, y0 + k, 2, 1);
+          },
+        ),
+      );
+      // planter with a bonsai tree in it
+      def("planterT", 18, 28, (g, ph) => {
+        E(g, COL.sh, 9, 26, 6, 1);
+        isoBox(g, 9, 18, 3, 3, 4, "#C6C0AE", "#9EA6AD", "#7C848C");
+        P(g, COL.out, 8, 14, 3, 5);
+        P(g, COL.trunk, 9, 14, 1, 4);
+        E(g, COL.out, 9 + ph, 9, 7, 6);
+        E(g, COL.leafA, 9 + ph, 8, 6, 5);
+        E(g, COL.leafB, 9 + ph, 11, 5, 3);
+        E(g, COL.leafHi, 6 + ph, 6, 3, 2);
+      });
+      // newspaper boxes
+      [
+        ["newsR", "COLVERM"],
+        ["newsB", "COLCERL"],
+      ].forEach(([nm, ck]) => {
+        const col = ck === "COLVERM" ? COL.verm : COL.cerl;
+        def(nm, 10, 13, (g) => {
+          E(g, COL.sh, 5, 12, 3, 1);
+          isoBox(g, 5, 4, 2, 2, 5, shade(col, 1.05), col, shade(col, 0.7));
+          P(g, COL.win, 4, 7, 3, 2);
+          P(g, COL.out, 4, 11, 1, 2);
+          P(g, COL.out, 8, 11, 1, 2);
+        });
+      });
+      // abstract public art: offset stacked cubes on a plinth
+      def("sculpt", 20, 26, (g, ph) => {
+        E(g, COL.sh, 10, 24, 7, 2);
+        isoBox(g, 10, 16, 4, 4, 2, "#D6D0BE", "#B8B2A6", "#9EA6AD"); // plinth
+        isoBox(
+          g,
+          9,
+          10,
+          3,
+          2,
+          5,
+          COL.verm,
+          shade(COL.verm, 0.72),
+          shade(COL.verm, 0.55),
+        );
+        isoBox(
+          g,
+          12,
+          6 - ph,
+          2,
+          2,
+          3,
+          COL.saff,
+          shade(COL.saff, 0.75),
+          shade(COL.saff, 0.6),
+        );
+        P(g, COL.foam, 13, 7 - ph, 1, 1);
+      });
+      def("lamp", 12, 22, (g, ph) => {
+        E(g, COL.sh, 6, 20, 3, 1);
+        P(g, COL.road, 5, 6, 2, 14);
+        P(g, COL.road, 3, 2, 6, 5);
+        P(g, COL.saff, 4, 3, 4, 3);
+        P(g, COL.foam, 5 + ph, 3, 1, 1);
+        if (ph) E(g, "rgba(255,204,15,0.3)", 6, 4, 5, 4);
+      });
+
+      // =================================================================
+      // MAP
+      // =================================================================
+      // The city core is a GRID x GRID array of vacant blocks — 9 (3x3) by
+      // default, scalable up to 100 (10x10). Everything downstream (map size,
+      // roads, crosswalks, PLOTS, camera fit) derives from GRID, and the map is
+      // sized so GRID=3 reproduces the original 96x72 layout tile-for-tile.
+      const ROADW = 2,
+        BLKW = 6,
+        PITCH = ROADW + BLKW;
+      const MIN_GRID = 3,
+        MAX_GRID = 10; // 9 .. 100 buildings
+      const gridForCount = (n) =>
+        Math.max(MIN_GRID, Math.min(MAX_GRID, Math.ceil(Math.sqrt(Math.max(1, n | 0)))));
+      let GRID = MIN_GRID,
+        CITY,
+        MW,
+        MH,
+        CX0,
+        CY0;
+      let ground,
+        elev,
+        skirt,
+        PLOTS,
+        occupied;
+      const objs = [];
+      const setG = (x, y, t) => {
+        if (x >= 0 && x < MW && y >= 0 && y < MH) ground[y][x] = t;
+      };
+      const rcol = (k) => CX0 + k * PITCH,
+        rrow = (k) => CY0 + k * PITCH;
+      // Ambient traffic rides one lane of each road pair; freeLane picks the lane
+      // the circuits don't use, so no car ever drives through a crane.
+      const freeLane = (k) => (k === 0 || k === 2 ? 0 : 1);
+      function lotGear({ i, px, py }) {
+        const east = rcol(i + 1) + freeLane(i + 1), // curb lane, screen right
+          west = rcol(i) + freeLane(i); // curb lane, screen left
+        return {
+          crane: [east, py + 1],
+          scaff: [west, py + 2],
+          mats: [west, py + 3],
+          barriers: [
+            [px + 1, py + 4], // hoarding along the two street-facing walks
+            [px + 3, py + 4],
+            [px + 4, py + 4],
+            [px + 4, py + 2],
+          ],
+        };
+      }
+
+      // buildCity (re)generates the whole map for a GRID x GRID core. It reseeds
+      // the PRNG so every build is deterministic, and is re-run whenever the
+      // project count needs a bigger (or smaller) grid — the city literally grows
+      // blocks, up to 100. GRID=3 reproduces the original 96x72 map tile-for-tile.
+      function buildCity(gridN) {
+        GRID = gridN;
+        CITY = GRID * PITCH + ROADW;
+        MW = CITY + 70;
+        MH = CITY + 46;
+        CX0 = Math.floor((MW - CITY) / 2);
+        CY0 = Math.floor((MH - CITY) / 2);
+        rand = mulberry32(20260702);
+        ground = Array.from({ length: MH }, () => new Array(MW).fill("g0"));
+        elev = Array.from({ length: MH }, () => new Array(MW).fill(0));
+        skirt = Array.from({ length: MH }, () => new Array(MW).fill("rock"));
+        objs.length = 0;
+        PLOTS = [];
+
+      for (let y = 0; y < MH; y++)
+        for (let x = 0; x < MW; x++) ground[y][x] = "g" + (hash(x, y) % 3);
+
+      // ---- city ----
+
+      for (let y = CY0; y < CY0 + CITY; y++)
+        for (let x = CX0; x < CX0 + CITY; x++)
+          if ((x - CX0) % PITCH < ROADW || (y - CY0) % PITCH < ROADW)
+            setG(x, y, "rd");
+
+      for (let i = 0; i < GRID; i++)
+        for (let j = 0; j < GRID; j++) {
+          const bx = rcol(i) + ROADW,
+            by = rrow(j) + ROADW;
+          for (let y = by; y < by + BLKW; y++)
+            for (let x = bx; x < bx + BLKW; x++)
+              setG(x, y, "sw" + (hash(x, y) % 3));
+          for (let y = by + 1; y < by + BLKW - 1; y++)
+            for (let x = bx + 1; x < bx + BLKW - 1; x++) setG(x, y, "pd");
+        }
+      for (let ki = 0; ki <= GRID; ki++)
+        for (let kj = 0; kj <= GRID; kj++) {
+          const xs = rcol(ki),
+            ys = rrow(kj);
+          if (kj > 0) {
+            setG(xs, ys - 1, "cwV");
+            setG(xs + 1, ys - 1, "cwV");
+          }
+          if (kj < GRID) {
+            setG(xs, ys + 2, "cwV");
+            setG(xs + 1, ys + 2, "cwV");
+          }
+          if (ki > 0) {
+            setG(xs - 1, ys, "cwH");
+            setG(xs - 1, ys + 1, "cwH");
+          }
+          if (ki < GRID) {
+            setG(xs + 2, ys, "cwH");
+            setG(xs + 2, ys + 1, "cwH");
+          }
+        }
+      // parked cars removed — ambient circuit traffic only. rand() draws preserved
+      // verbatim: this loop's consumption pattern positions everything downstream.
+      const BUSY_V = new Set(["0,0", "1,0", "1,1", "2,0", "2,1", "3,1"]),
+        BUSY_H = new Set(["0,0", "1,0", "1,1", "2,0", "2,1", "3,1"]);
+      for (let k = 0; k <= 3; k++)
+        for (let b = 0; b < 3; b++)
+          for (let p = 1; p < BLKW - 2; p += 2) {
+            if (rand() < 0.4 && !BUSY_V.has(k + ",0")) rand();
+            if (rand() < 0.4 && !BUSY_V.has(k + ",1")) rand();
+            if (rand() < 0.4 && !BUSY_H.has(k + ",0")) rand();
+            if (rand() < 0.4 && !BUSY_H.has(k + ",1")) rand();
+          }
+
+      // ---- arterials: winding roads east and west (carved before flora) ----
+      function roadRect(x0, y0, x1, y1) {
+        for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++)
+          for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++)
+            setG(x, y, "rd");
+      }
+      const RE = rrow(1),
+        RW = rrow(2),
+        CE = CX0 + CITY;
+      roadRect(CE, RE, CE + 5, RE + 1); // east: out of the city
+      roadRect(CE + 4, RE - 3, CE + 5, RE + 1); // jog north
+      roadRect(CE + 4, RE - 3, CE + 12, RE - 2);
+      roadRect(CE + 11, RE - 2, CE + 12, RE + 2); // jog south
+      roadRect(CE + 11, RE + 2, CE + 19, RE + 3); // into the forest clearing
+      roadRect(CX0 - 6, RW, CX0 - 1, RW + 1); // west: out of the city
+      roadRect(CX0 - 6, RW, CX0 - 5, RW + 4); // jog south
+      roadRect(CX0 - 14, RW + 3, CX0 - 5, RW + 4);
+      roadRect(CX0 - 14, RW - 1, CX0 - 13, RW + 4); // jog north
+      roadRect(CX0 - 22, RW - 1, CX0 - 13, RW); // into the meadow
+
+      // ---- north: mountain pulled close, bouldery (per-column ridge + jitter) ----
+      const nb = [],
+        RH = [];
+      let jw = 0,
+        jr = 0;
+      for (let x = 0; x < MW; x++) {
+        nb[x] = Math.max(15, Math.min(18, 17 + Math.round(jw)));
+        jw = Math.max(-2, Math.min(2, jw + (rand() * 2 - 1) * 1.6));
+        RH[x] = Math.max(5, Math.min(9, 7 + Math.round(jr)));
+        jr = Math.max(-2.5, Math.min(2.5, jr + (rand() * 2 - 1) * 1.5));
+      }
+      const WX = Math.floor(MW / 2);
+      for (let x = WX - 2; x <= WX + 2; x++) nb[x] = 17; // stable shelf under the falls
+      for (let x = 50; x <= 68; x++) nb[x] = Math.max(nb[x], 17); // trail flank
+      // St Aidan's stands clear of the rock: the ridge foot is pulled back off
+      // the church lot, so the tabernacle's east end lands on open grass
+      for (let x = 35; x <= 49; x++) {
+        const t = Math.min(x - 34, 50 - x);
+        nb[x] = Math.min(nb[x], 14 + Math.max(0, 3 - t));
+      }
+      for (let x = 0; x < MW; x++)
+        for (let y = 0; y <= nb[x]; y++) {
+          const d = nb[x] - y;
+          const fall = x >= WX - 1 && x <= WX + 1;
+          const j = fall
+            ? 0
+            : hash(x, y) % 5 === 0
+              ? 1
+              : hash(y, x) % 7 === 0
+                ? -1
+                : 0;
+          const e = Math.max(1, Math.min(fall ? 9 : RH[x], 1 + d + j));
+          elev[y][x] = e;
+          setG(
+            x,
+            y,
+            e >= 7
+              ? hash(x, y) % 3
+                ? "sn"
+                : "rk"
+              : hash(x, y) % 4
+                ? "rk"
+                : "rkD",
+          );
+        }
+      for (let x = WX - 1; x <= WX + 1; x++)
+        for (let y = 2; y <= nb[x]; y++) {
+          setG(x, y, "w0");
+          skirt[y][x] = "fall";
+        }
+      const poolY = Math.max(nb[WX - 1], nb[WX], nb[WX + 1]) + 1;
+      for (let y = poolY; y < poolY + 3; y++)
+        for (let x = WX - 3; x <= WX + 3; x++)
+          setG(
+            x,
+            y,
+            y === poolY && x >= WX - 1 && x <= WX + 1
+              ? "wfF"
+              : "w" + (hash(x, y) % 2),
+          );
+      const EXC = rcol(2);
+      [
+        [EXC, CY0 - 1],
+        [EXC + 1, CY0 - 1],
+        [EXC, CY0 - 2],
+        [EXC + 1, CY0 - 2],
+        [EXC + 1, CY0 - 3],
+        [EXC + 2, CY0 - 3],
+        [EXC + 2, CY0 - 4],
+        [EXC + 3, CY0 - 4],
+        [EXC + 2, poolY + 2],
+        [EXC + 1, poolY + 2],
+        [EXC + 1, poolY + 1],
+        [EXC + 2, poolY + 1],
+      ].forEach((p) => setG(p[0], p[1], "rd"));
+      // winding trail up the east face to a summit pad
+      let te = 1,
+        tc = 0;
+      function trailTile(x, y) {
+        setG(x, y, "tr");
+        elev[y][x] = Math.min(9, te);
+        if (++tc % 3 === 0) te++;
+      }
+      trailTile(66, 18);
+      trailTile(66, 17);
+      for (let x = 65; x >= 53; x--) trailTile(x, 17);
+      trailTile(53, 16);
+      trailTile(53, 15);
+      for (let x = 54; x <= 64; x++) trailTile(x, 15);
+      trailTile(64, 14);
+      trailTile(64, 13);
+      for (let x = 63; x >= 54; x--) trailTile(x, 13);
+      for (let yy = 11; yy <= 12; yy++)
+        for (let xx = 52; xx <= 54; xx++) {
+          // summit pad
+          setG(xx, yy, "tr");
+          elev[yy][xx] = Math.min(9, te);
+        }
+      // boulders strewn on the slope
+      for (let r = 0; r < 14; r++) {
+        const x = 3 + Math.floor(rand() * (MW - 6)),
+          y = 1 + Math.floor(rand() * 15);
+        const g0 = ground[y][x];
+        if (g0 === "rk" || g0 === "rkD") objs.push({ s: "boulder", x, y });
+      }
+      // boulders at the mountain foot
+      for (let b = 0; b < 6; b++) {
+        const x = 4 + Math.floor(rand() * (MW - 8)),
+          y = nb[Math.min(MW - 1, x)] + 1 + Math.floor(rand() * 2);
+        if (
+          Math.abs(x - WX) > 5 &&
+          Math.abs(x - EXC - 1) > 3 &&
+          ground[y][x].startsWith("g")
+        )
+          objs.push({ s: "boulder", x, y });
+      }
+
+      // ---- south: coastline, palms, sea rocks ----
+      const sandStart = CY0 + CITY + 3;
+      let js = 0;
+      const sandEndAt = [];
+      for (let x = 0; x < MW; x++) {
+        // Coastline sits a fixed margin off the map's south edge; MH-15 is 57 at
+        // GRID=3 (unchanged) and moves south with a larger map so the sea never
+        // creeps up over the enlarged core.
+        const sandEnd = MH - 15 + Math.round(js);
+        sandEndAt[x] = sandEnd;
+        js = Math.max(-2.5, Math.min(2.5, js + (rand() * 2 - 1) * 1.2));
+        for (let y = sandStart; y <= sandEnd && y < MH; y++) setG(x, y, "sd");
+        if (sandEnd + 1 < MH) setG(x, sandEnd + 1, "surf");
+        for (let y = sandEnd + 2; y < MH; y++)
+          setG(x, y, "w" + (hash(x, y) % 2));
+      }
+      // beachfront promenade along the grass/sand perimeter, full width
+      for (let x = 2; x < MW - 2; x++) {
+        setG(x, sandStart - 1, "bw");
+        setG(x, sandStart, "bw");
+      }
+      // path down from the city, meeting the promenade
+      const BX = rcol(1);
+      for (let y = CY0 + CITY; y < sandStart - 1; y++) {
+        setG(BX, y, "sw" + (hash(BX, y) % 3));
+        setG(BX + 1, y, "sw" + (hash(BX + 1, y) % 3));
+      }
+      // pier continuing out over the surf
+      const bwEnd = Math.max(sandEndAt[BX], sandEndAt[BX + 1]) + 3;
+      for (let y = sandStart + 1; y <= bwEnd; y++) {
+        setG(BX, y, "bw");
+        setG(BX + 1, y, "bw");
+      }
+      for (
+        let y = bwEnd + 1;
+        y <= bwEnd + 2 && y < MH;
+        y++ // end deck
+      )
+        for (let x = BX - 1; x <= BX + 2; x++) setG(x, y, "bw");
+
+      for (let x = 4; x < MW - 4; x += 7 + Math.floor(rand() * 4)) {
+        if (Math.abs(x - BX) < 4) continue; // clear of the boardwalk
+        objs.push({ s: "palm", x, y: sandStart + 1 + Math.floor(rand() * 3) });
+      }
+      // rocks land where the sea/sand does, never on the planking: the pier and
+      // promenade are the only "bw" tiles out here, so the grid is the test.
+      const onDeck = (x, y) => (ground[y] || [])[x] === "bw";
+      for (let r = 0; r < 10; r++) {
+        const x = 3 + Math.floor(rand() * (MW - 6));
+        const y = sandEndAt[x] + 3 + Math.floor(rand() * 5);
+        if (onDeck(x, y)) continue;
+        objs.push({ s: "rockW", x, y });
+      }
+      for (let r = 0; r < 3; r++) {
+        const x = 6 + Math.floor(rand() * (MW - 12));
+        const y = sandStart + 1 + Math.floor(rand() * 2);
+        if (onDeck(x, y)) continue;
+        objs.push({ s: "boulder", x, y });
+      }
+
+      // ---- low-rise district: 4-tile terracotta band around the core ----
+      const BAND = 4;
+      for (
+        let y = CY0 - BAND;
+        y <= CY0 + CITY + 1;
+        y++ // south capped at 2 rows (beach)
+      )
+        for (let x = CX0 - BAND; x <= CX0 + CITY + BAND - 1; x++) {
+          if (x >= CX0 && x < CX0 + CITY && y >= CY0 && y < CY0 + CITY)
+            continue;
+          const g0 = (ground[y] || [])[x];
+          if (!g0 || !(g0.startsWith("g") || g0 === "tg" || g0[0] === "f"))
+            continue;
+          setG(x, y, "sw" + (hash(x, y) % 3));
+        }
+      const NSV = [0, 1, 2, 4, 5, 6, 7],
+        EWV = [0, 1, 2, 3, 5, 6, 8]; // ty==2 / tx==2
+      function placeRun(horizontal, fixed, from, to) {
+        const list = horizontal ? NSV : EWV;
+        let pos = from,
+          last = -1;
+        while (pos <= to) {
+          if (rand() < 0.18) {
+            pos += 2;
+            continue;
+          } // vacant lot
+          let vi = list[Math.floor(rand() * list.length)];
+          if (vi === last) vi = list[(list.indexOf(vi) + 1) % list.length];
+          const v = BVARIANTS[vi];
+          const ax = horizontal ? pos : fixed,
+            ay = horizontal ? fixed : pos;
+          const span = horizontal ? v.tx : v.ty;
+          let ok = !(
+            horizontal &&
+            fixed === CY0 + CITY &&
+            ax <= BX + 1 &&
+            ax + v.tx - 1 >= BX
+          );
+          for (let dy = 0; dy < v.ty && ok; dy++)
+            for (let dx = 0; dx < v.tx && ok; dx++) {
+              const g0 = (ground[ay + dy] || [])[ax + dx];
+              if (!g0 || !g0.startsWith("sw")) ok = false;
+            }
+          if (!ok) {
+            pos += 1;
+            continue;
+          }
+          for (let dy = 0; dy < v.ty; dy++)
+            for (let dx = 0; dx < v.tx; dx++)
+              if (v.gr) setG(ax + dx, ay + dy, v.gr); // building's own ground
+          objs.push({
+            s: "bldg" + vi,
+            x: ax + v.tx - 1,
+            y: ay + v.ty - 1,
+            dy: 8,
+          });
+          last = vi;
+          pos += span + 1 + (rand() < 0.45 ? 1 : 0);
+        }
+      }
+      placeRun(true, CY0 - 3, CX0 - 3, CX0 + CITY + 1); // north
+      placeRun(true, CY0 + CITY, CX0 - 3, CX0 + CITY + 1); // south
+      placeRun(false, CX0 - 3, CY0, CY0 + CITY - 3); // west
+      placeRun(false, CX0 + CITY + 1, CY0, CY0 + CITY - 3); // east
+      // exactly one 41 Cooper, replacing the first florist on the west run (marked slot)
+      {
+        const t = objs
+          .filter((o) => o.s === "bldg8" && o.x === CX0 - 2)
+          .sort((p, q) => p.y - q.y)[0];
+        if (t) t.s = "bldg9";
+      }
+      for (let x = CX0 - 4; x <= CX0 + CITY + 3; x += 5) {
+        // lamps on the outer walks
+        if (((ground[CY0 - 4] || [])[x] || "").startsWith("sw"))
+          objs.push({ s: "lamp", x, y: CY0 - 4 });
+      }
+      for (let y = CY0 - 2; y <= CY0 + CITY; y += 5) {
+        if (((ground[y] || [])[CX0 - 4] || "").startsWith("sw"))
+          objs.push({ s: "lamp", x: CX0 - 4, y });
+        if (((ground[y] || [])[CX0 + CITY + 3] || "").startsWith("sw"))
+          objs.push({ s: "lamp", x: CX0 + CITY + 3, y });
+      }
+
+      // --- St Aidan's on the mountain side: the lot sits at the foot of the
+      // north ridge, so the campus looks SW across the city to the water ---
+      const CHX = 42,
+        CHY = 22,
+        CHTX = 6,
+        CHTY = 5;
+      const churchTiles = [];
+      for (let dy = 0; dy < CHTY; dy++)
+        for (let dx = 0; dx < CHTX; dx++)
+          churchTiles.push(CHX - dx + "," + (CHY - dy));
+      {
+        const foot = new Set(churchTiles);
+        for (let i = objs.length - 1; i >= 0; i--)
+          if (foot.has(objs[i].x + "," + objs[i].y)) objs.splice(i, 1);
+        objs.push({ s: "church", x: CHX, y: CHY, dy: 9 });
+      }
+
+      // ---- lots: the GRID x GRID paved core blocks are the vacant land ----
+      // Each block is 6x6: a 1-tile sidewalk ring around a 4x4 paved pad. The
+      // tower owns the pad outright and stands dead-centre on it, so the site
+      // works the street instead — gear goes on the ring and the curb lane.
+      for (let j = 0; j < GRID; j++)
+        for (let i = 0; i < GRID; i++)
+          PLOTS.push({ i, j, px: rcol(i) + ROADW + 1, py: rrow(j) + ROADW + 1 }); // 4x4 pad
+
+      // Ambient traffic only ever rides one lane of each road pair (see CIRCUITS:
+      // the circuit rectangles land on rcol(k)+1 for k=0,2 and rcol(k)+0 for k=1,3).
+      // freeLane picks the other one, so no car ever drives through a crane.
+      // Screen-x offset from the tower's centre line, in half-tiles: a piece is
+      // clear of the 3-tile-wide tower body once |dx| > 3. Crane and scaffold sit
+      // at 4-6, so their masts rise beside the tower, never across it. The
+      // barriers are short enough to stay under its base edge out front.
+
+      // --- street furniture on open plaza tiles (terracotta with nothing on it) ---
+      occupied = new Set(objs.map((o) => o.x + "," + o.y));
+      // hold the hoarding line clear so no bench or lamp spawns under a barrier
+      PLOTS.forEach((lot) =>
+        lotGear(lot).barriers.forEach(([x, y]) => occupied.add(x + "," + y)),
+      );
+      churchTiles.forEach((t) => occupied.add(t));
+      function furnitureFits(x, y, w, h) {
+        for (let dy = 0; dy < h; dy++)
+          for (let dx = 0; dx < w; dx++) {
+            const g0 = (ground[y + dy] || [])[x + dx];
+            if (!g0 || !g0.startsWith("sw")) return false;
+            if (occupied.has(x + dx + "," + (y + dy))) return false;
+          }
+        return true;
+      }
+      function claim(x, y, w, h, s, dy) {
+        for (let j = 0; j < h; j++)
+          for (let i = 0; i < w; i++) occupied.add(x + i + "," + (y + j));
+        objs.push({ s, x: x + w - 1, y: y + h - 1, dy: dy || 6 });
+      }
+      // fountains: a couple of 2x2 plaza centerpieces in corner plazas
+      [
+        [CX0 - 3, CY0 - 3],
+        [CX0 + CITY + 1, CY0 + CITY - 1],
+      ].forEach(([fx, fy]) => {
+        for (let oy = 0; oy <= 1; oy++)
+          for (let ox = 0; ox <= 1; ox++)
+            if (furnitureFits(fx + ox, fy + oy, 2, 2)) {
+              claim(fx + ox, fy + oy, 2, 2, "fountain", 8);
+              return;
+            }
+      });
+      // city-interior block walks stay BLANK; all furniture lives on the band
+      const inCore = (x, y) =>
+        x >= CX0 && x < CX0 + CITY && y >= CY0 && y < CY0 + CITY;
+      // pass 1: multi-tile pieces (ledge runs, long planters), oriented to their side
+      for (let y = CY0 - BAND; y <= CY0 + CITY + 1; y++)
+        for (let x = CX0 - BAND; x <= CX0 + CITY + BAND - 1; x++) {
+          if (inCore(x, y)) continue;
+          const ns = y < CY0 || y >= CY0 + CITY; // north/south band -> run along x
+          const h2 = hash(x * 7 + 3, y * 11 + 1) % 100;
+          if (h2 < 5) {
+            const [w, h] = ns ? [3, 1] : [1, 3];
+            if (furnitureFits(x, y, w, h))
+              claim(x, y, w, h, ns ? "ldgA" : "ldgB", 8);
+          } else if (h2 < 11) {
+            const [w, h] = ns ? [2, 1] : [1, 2];
+            if (furnitureFits(x, y, w, h))
+              claim(x, y, w, h, ns ? "pltA" : "pltB", 8);
+          } else if (h2 < 15) {
+            if (furnitureFits(x, y, 1, 1)) claim(x, y, 1, 1, "planterT");
+          } else if (h2 < 17) {
+            if (furnitureFits(x, y, 1, 1)) claim(x, y, 1, 1, "sculpt");
+          }
+        }
+      // pass 2: small fill between the installations
+      for (let y = CY0 - BAND; y <= CY0 + CITY + 1; y++)
+        for (let x = CX0 - BAND; x <= CX0 + CITY + BAND - 1; x++) {
+          if (inCore(x, y) || !furnitureFits(x, y, 1, 1)) continue;
+          const h = hash(x * 3 + 1, y * 5 + 2) % 100;
+          if (h < 9) claim(x, y, 1, 1, "planter");
+          else if (h < 16) claim(x, y, 1, 1, (x + y) & 1 ? "benchA" : "benchB");
+          else if (h < 20) claim(x, y, 1, 1, "bin");
+        }
+      // pass 3: core block walks — light sprinkle only, keep the middle daylighted
+      for (let y = CY0; y < CY0 + CITY; y++)
+        for (let x = CX0; x < CX0 + CITY; x++) {
+          if (!ground[y][x].startsWith("sw") || !furnitureFits(x, y, 1, 1))
+            continue;
+          const h = hash(x * 13 + 7, y * 17 + 3) % 100;
+          if (h < 3) claim(x, y, 1, 1, (x + y) & 1 ? "benchA" : "benchB");
+          else if (h < 5) claim(x, y, 1, 1, "bin");
+          else if (h < 7) claim(x, y, 1, 1, (x ^ y) & 1 ? "newsR" : "newsB");
+          else if (h < 10) claim(x, y, 1, 1, "lamp");
+        }
+      // planters on the outer ring of each center block (the road-facing row)
+      for (let bi = 0; bi < 3; bi++)
+        for (let bj = 0; bj < 3; bj++) {
+          const bx = rcol(bi) + ROADW,
+            by = rrow(bj) + ROADW;
+          for (let k = 0; k < BLKW; k++) {
+            [
+              [bx + k, by],
+              [bx + k, by + BLKW - 1],
+              [bx, by + k],
+              [bx + BLKW - 1, by + k],
+            ].forEach(([px, py]) => {
+              if (
+                hash(px * 19 + 11, py * 23 + 5) % 100 < 12 &&
+                furnitureFits(px, py, 1, 1)
+              )
+                claim(px, py, 1, 1, "planter");
+            });
+          }
+        }
+
+      // ---- terraces: raised earth ledges ----
+      function plateau(x0, y0, w, h) {
+        for (let y = y0; y < y0 + h; y++)
+          for (let x = x0; x < x0 + w; x++)
+            if (x >= 0 && x < MW && y >= 0 && y < MH) {
+              elev[y][x] = 1;
+              skirt[y][x] = "earth";
+            }
+      }
+      plateau(8, 22, 10, 5); // west
+      plateau(16, 40, 9, 5); // west
+      plateau(CX0 + CITY + 7, 20, 13, 5); // forest shelf, east
+
+      // ---- east: forest wall (near-solid, overlapping canopies) ----
+      const nearRoad = (x, y) => {
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const g = (ground[y + dy] || [])[x + dx];
+            if (g === "rd") return true;
+          }
+        return false;
+      };
+      for (let y = 19; y < sandStart - 2; y += 2)
+        for (let x = CX0 + CITY + 5; x < MW - 1; x++)
+          if (rand() < 0.8 && !nearRoad(x, y)) objs.push({ s: "tree", x, y });
+
+      // ---- west: overgrown meadow ----
+      const meadowOK = (x, y) =>
+        x >= 2 && x < CX0 - 2 && y >= 19 && y < sandStart - 1;
+      for (let p = 0; p < 14; p++) {
+        // sprawling tall-grass patches
+        const px = 2 + Math.floor(rand() * (CX0 - 10)),
+          py = 19 + Math.floor(rand() * (sandStart - 25));
+        const pw = 5 + Math.floor(rand() * 6),
+          ph = 4 + Math.floor(rand() * 4);
+        for (let y = py; y < py + ph; y++)
+          for (let x = px; x < px + pw; x++)
+            if (meadowOK(x, y) && ground[y][x].startsWith("g"))
+              setG(x, y, "tg");
+      }
+      [
+        [4, 31, 11, 5],
+        [21, 34, 8, 4],
+        [6, 45, 9, 4],
+      ].forEach(([fx, fy, fw, fh]) => {
+        for (let y = fy; y < fy + fh; y++)
+          for (let x = fx; x < fx + fw; x++)
+            if (
+              meadowOK(x, y) &&
+              (ground[y][x].startsWith("g") || ground[y][x] === "tg")
+            )
+              setG(x, y, "ff" + (hash(x, y) % 2));
+      });
+      for (
+        let y = 19;
+        y < sandStart - 1;
+        y++ // overgrowth fill on remaining grass
+      )
+        for (let x = 2; x < CX0 - 2; x++) {
+          if (!ground[y][x].startsWith("g")) continue;
+          const h = hash(x, y) % 10;
+          if (h < 3) setG(x, y, "tg");
+          else if (h < 5) setG(x, y, ["fR", "fY", "fW"][h - 3]);
+        }
+      for (let b = 0; b < 40; b++) {
+        // bulb plants everywhere
+        const x = 3 + Math.floor(rand() * (CX0 - 8)),
+          y = 20 + Math.floor(rand() * (sandStart - 26));
+        const g = ground[y][x];
+        if (g.startsWith("g") || g === "tg")
+          objs.push({ s: ["bR", "bY", "bW"][Math.floor(rand() * 3)], x, y });
+      }
+      for (let t = 0; t < 12; t++) {
+        // tree clusters
+        const x = 4 + Math.floor(rand() * (CX0 - 12)),
+          y = 20 + Math.floor(rand() * (sandStart - 28));
+        if (ground[y][x] === "rd") continue;
+        objs.push({ s: "tree", x, y });
+        if (rand() < 0.6 && ground[y + 1][x + 1] !== "rd")
+          objs.push({ s: "tree", x: x + 1, y: y + 1 });
+        if (rand() < 0.5 && ground[y][x + 2] !== "rd")
+          objs.push({ s: "streetTree", x: x + 2, y });
+      }
+
+      objs.sort((a, b) => a.x + a.y - (b.x + b.y) || a.y - b.y);
+      }
+      buildCity(gridForCount(0));
+
+      // ambient traffic: closed rectangular circuits around blocks —
+      // cars never spawn or despawn, they loop the grid
+      const CIRCUITS = [
+        { ka: 0, kb: 1, kc: 0, kd: 1, cw: 1 },
+        { ka: 1, kb: 2, kc: 1, kd: 2 },
+        { ka: 2, kb: 3, kc: 2, kd: 3, cw: 1 },
+      ];
+      const AMBIENT = [
+        { ci: 0, off: 0.0, c: 0 },
+        { ci: 0, off: 0.5, c: 2 },
+        { ci: 1, off: 0.15, c: 1 },
+        { ci: 1, off: 0.65, c: 3 },
+        { ci: 2, off: 0.3, c: 0 },
+        { ci: 2, off: 0.8, c: 2 },
+      ];
+      // Each circuit is a lane rectangle with its corners rounded into quarter-turn
+      // arcs, so a car's heading sweeps through a corner instead of snapping 90°.
+      // Rights (CW, inset lane) turn tighter than lefts (CCW, outer lane).
+      const TURN_R_CW = 0.8,
+        TURN_R_CCW = 1.25;
+      function circuitPath(q) {
+        // RH (US) lanes both directions. CCW rides the outer lane rectangle and
+        // makes left turns; CW rides the inset lane rectangle and makes rights.
+        const cw = q.cw;
+        const x1 = rcol(q.ka) + (cw ? 1 : 0),
+          x2 = rcol(q.kb) + (cw ? 0 : 1);
+        const y1 = rrow(q.kc) + (cw ? 1 : 0),
+          y2 = rrow(q.kd) + (cw ? 0 : 1);
+        // corners in travel order
+        const C = cw
+          ? [
+              [x1, y1],
+              [x2, y1],
+              [x2, y2],
+              [x1, y2],
+            ]
+          : [
+              [x2, y1],
+              [x1, y1],
+              [x1, y2],
+              [x2, y2],
+            ];
+        const R = Math.min(
+          cw ? TURN_R_CW : TURN_R_CCW,
+          (x2 - x1) / 2,
+          (y2 - y1) / 2,
+        );
+        const dir = (a, b) => {
+          const dx = b[0] - a[0],
+            dy = b[1] - a[1],
+            l = Math.hypot(dx, dy);
+          return [dx / l, dy / l];
+        };
+        const T1 = [],
+          T2 = [],
+          arc = [];
+        for (let i = 0; i < 4; i++) {
+          const V = C[i],
+            P = C[(i + 3) % 4],
+            N = C[(i + 1) % 4];
+          const di = dir(P, V),
+            dou = dir(V, N);
+          T1[i] = [V[0] - di[0] * R, V[1] - di[1] * R]; // enter tangent
+          T2[i] = [V[0] + dou[0] * R, V[1] + dou[1] * R]; // exit tangent
+          const c = [
+            V[0] - di[0] * R + dou[0] * R,
+            V[1] - di[1] * R + dou[1] * R,
+          ];
+          const sgn = Math.sign(di[0] * dou[1] - di[1] * dou[0]);
+          const a0 = Math.atan2(T1[i][1] - c[1], T1[i][0] - c[0]);
+          arc[i] = {
+            arc: 1,
+            c,
+            R,
+            a0,
+            sgn,
+            len: (R * Math.PI) / 2,
+          };
+        }
+        const segs = [];
+        for (let i = 0; i < 4; i++) {
+          segs.push(arc[i]);
+          const a = T2[i],
+            b = T1[(i + 1) % 4];
+          segs.push({
+            arc: 0,
+            a,
+            d: dir(a, b),
+            len: Math.hypot(b[0] - a[0], b[1] - a[1]),
+          });
+        }
+        return { segs, len: segs.reduce((s, g) => s + g.len, 0) };
+      }
+      const PATHS = CIRCUITS.map(circuitPath);
+      // position + world heading at arclength u
+      function pathAt(p, u) {
+        u = ((u % p.len) + p.len) % p.len;
+        for (const g of p.segs) {
+          if (u >= g.len) {
+            u -= g.len;
+            continue;
+          }
+          if (!g.arc)
+            return {
+              x: g.a[0] + g.d[0] * u,
+              y: g.a[1] + g.d[1] * u,
+              th: Math.atan2(g.d[1], g.d[0]),
+            };
+          const a = g.a0 + (g.sgn * u) / g.R;
+          return {
+            x: g.c[0] + g.R * Math.cos(a),
+            y: g.c[1] + g.R * Math.sin(a),
+            th: Math.atan2(g.sgn * Math.cos(a), -g.sgn * Math.sin(a)),
+          };
+        }
+        const g = p.segs[p.segs.length - 1]; // fp guard
+        return { x: g.a[0], y: g.a[1], th: Math.atan2(g.d[1], g.d[0]) };
+      }
+      function trafficNow(tms) {
+        return AMBIENT.map((car) => {
+          const p = PATHS[car.ci];
+          const at = pathAt(p, car.off * p.len + tms * 0.002); // 2 tiles/s
+          const k =
+            (((Math.round((at.th * NYAW) / (2 * Math.PI)) % NYAW) + NYAW) %
+              NYAW) |
+            0;
+          return { s: carName(car.c, k), x: at.x, y: at.y, dy: CAR_DY };
+        });
+      }
+
+      // =================================================================
+      // PROJECT TOWERS: one project per vacant core block. A new project is a
+      // 1-story office; every item that reaches completion 1.0 stacks another
+      // story, so a long-running project grows into a skyscraper. Open items
+      // keep construction equipment on the lot. Three building sets, each with
+      // its own starter / lobby / generic story / modern crown.
+      // =================================================================
+      const PTX = 3,
+        PTY = 3, // tower footprint, in tiles (fits the 4x4 block pad)
+        LOBBY_H = 18,
+        STORY_H = 11,
+        STARTER_H = 15,
+        MAX_STORIES = 48,
+        TMARG = 12; // sprite side margin: crown balconies overhang the footprint
+
+      // Nine sets, ordered oldest -> newest, so a project's id spreads the
+      // skyline across eras the way a real one mixes them. Each set supplies the
+      // three layers that actually differ between styles — story, lobby, crown —
+      // as functions; the shell, the starter and the base outline are shared.
+      // (Declarations are hoisted, so the handlers below are defined further down.)
+      // 20 modern -> futuristic styles. INTERLEAVED by shape family (prism, cyl,
+      // taper, setback, twist, pyramid, crystal, repeating) so that stepping
+      // through the list by a fixed stride hits a different shape each time — this
+      // is what makes a handful of projects look varied instead of a wall of
+      // boxes. Assignment is styleFor(id) below, NOT id % length. `flat` =
+      // rectangular footprint (wears a wall logo, gets the crisp base outline).
+      const BSETS = [
+  { key: 'AZURE', flat: true,    body: '#3B4650', accent: '#7FDCFF', trim: '#D6D0BE', glass: '#7FDCFF', windows: 'grid',    silhouette: silPrism,    crown: crownFlatDeck, crownRoom: 44 },
+  { key: 'MARINE',   body: '#4E7EA6', accent: '#7FDCFF', trim: '#F0EAD6', glass: '#BFE8FF', silhouette: silCylinder, crown: crownDome,     crownRoom: 50 },
+  { key: 'SOLARIS',  body: '#4A4E8C', accent: '#FFCC0F', trim: '#E8E2D0', glass: '#A8B4FF', silhouette: silTaper,    crown: crownSail,     crownRoom: 54 },
+  { key: 'VERDE', flat: true,    body: '#8CA98C', accent: '#1FBF85', trim: '#F4EFE2', glass: '#B7E3C9', silhouette: silSetback,  crown: crownGarden,   crownRoom: 52 },
+  { key: 'HELIX',    body: '#2C6E67', accent: '#2BE8E0', trim: '#DCEFEE', glass: '#5FF0E4', silhouette: silTwist,    crown: crownSpire,    crownRoom: 56 },
+  { key: 'VERTEX',   body: '#2F5D6E', accent: '#3CE0FF', trim: '#DCEFF4', glass: '#8FE6FF', silhouette: silPyramid,  crown: crownBeacon,   crownRoom: 56 },
+  { key: 'QUARTZ',   body: '#8FA6C4', accent: '#EAF6FF', trim: '#FFFFFF', glass: '#CDE6FF', silhouette: silCrystal,  crown: crownSpire,    crownRoom: 58 },
+  { key: 'SLATE', flat: true,    body: '#4A4F57', accent: '#9FB4C4', trim: '#E8E2D0', glass: '#AEC6D6', windows: 'mullion', silhouette: silPrism,    crown: crownTwinMast, crownRoom: 46 },
+  { key: 'AURORA',   body: '#3E6E74', accent: '#2BE8E0', trim: '#E8F6F2', glass: '#8FF0E6', silhouette: silCylinder, crown: crownHalo,     crownRoom: 52 },
+  { key: 'ZEPHYR',   body: '#3D6B9E', accent: '#7FDCFF', trim: '#E8F0F6', glass: '#AEDcFF', silhouette: silTaper,    crown: crownSail,     crownRoom: 54 },
+  { key: 'TERRA', flat: true,    body: '#C4B49A', accent: '#FFCC0F', trim: '#F4EFE2', glass: '#9FD8C8', silhouette: silSetback,  crown: crownGarden,   crownRoom: 52 },
+  { key: 'NEXUS',    body: '#3A2456', accent: '#FF2E88', trim: '#7A5CFF', glass: '#B98CFF', silhouette: silTwist,    crown: crownHalo,     crownRoom: 58 },
+  { key: 'OBELISK',  body: '#7C8690', accent: '#FFFFFF', trim: '#F4EFE2', glass: '#CFE0EA', silhouette: silPyramid,  crown: crownSpire,    crownRoom: 58 },
+  { key: 'CELESTE',  body: '#B7C6D6', accent: '#7FDCFF', trim: '#FFFFFF', glass: '#DAF0FF', silhouette: silCrystal,  crown: crownHalo,     crownRoom: 60 },
+  { key: 'ONYX', flat: true,     body: '#2B2F36', accent: '#C0C6CC', trim: '#8A9099', glass: '#3E5568', windows: 'ribbon',  silhouette: silPrism,    crown: crownBeacon,   crownRoom: 48 },
+  { key: 'COBALT', flat: true,   body: '#2E3D66', accent: '#7FA8FF', trim: '#D6D0BE', glass: '#8FB4FF', windows: 'grid',    silhouette: silPrism,    crown: crownAntenna,  crownRoom: 46 },
+  { key: 'PLATINUM', flat: true, body: '#6E767E', accent: '#EDEDED', trim: '#F4EFE2', glass: '#BFD2DE', windows: 'mullion', silhouette: silPrism,    crown: crownFlatDeck, crownRoom: 44 },
+  { key: 'CITRINE', flat: true,  body: '#5A5140', accent: '#FFCC0F', trim: '#F4EFE2', glass: '#F2D98A', windows: 'grid',    silhouette: silPrism,    crown: crownFlatDeck, crownRoom: 45 },
+  { key: 'IONIC', flat: true,    body: '#22314A', accent: '#33E0FF', trim: '#CFE0EA', glass: '#3CE0FF', windows: 'ribbon',  silhouette: silPrism,    crown: crownTwinMast, crownRoom: 48 },
+  { key: 'HORIZON', flat: true,  body: '#25304A', accent: '#8F7FFF', trim: '#D6D0BE', glass: '#A79CFF', windows: 'ribbon',  silhouette: silPrism,    crown: crownBeacon,   crownRoom: 50 },
+];
+
+      // Map a project id -> style index. NOT `id % length`: that is a linear map,
+      // so sequential ids (1,2,3,4...) walk sequential styles and a few projects
+      // all land in one neighbourhood of the list (the bug that made every tower a
+      // box). Instead step by a stride coprime to the list length: this is a
+      // bijection, so any run of consecutive ids visits distinct styles with no
+      // repeats until all 20 are used, and — because the list is interleaved by
+      // shape — each step lands on a different shape. Deterministic in id, so a
+      // project keeps its building across reloads (unlike Math.random()).
+      // STRIDE must stay coprime to BSETS.length (3 & 20 share no factors).
+      const STYLE_STRIDE = 3;
+      const styleFor = (id) => (((id * STYLE_STRIDE) % BSETS.length) + BSETS.length) % BSETS.length;
+
+      const TOWER_PX = {}; // sprite name -> px standing above the ground diamond
+
+      // =================================================================
+      // GIANT LOGO: a project's logo, worn across both street-facing walls.
+      // The browser rastered it to an N x N grid of solid cells at upload time
+      // (see list.html) and the server stores that grid, so nothing here has to
+      // decode an image while a sprite is being baked — we just paint cells.
+      // A cell spans `cw` face columns, and each column steps 1px down the wall,
+      // so a cell comes out as a parallelogram: the logo lies IN the plane of the
+      // facade rather than floating flat on top of it.
+      // =================================================================
+      const LOGO_MARGIN = 2; // px of bare wall kept at each end
+      const LOGO_NMAX = 48; // wall is 2*a = 48px, so 48 cells is 1px each
+      const BILL = {
+        back: "#0F1A21", // sign face: opaque, so no window ever shows through
+        face: "#8B949C", // frame
+        hi: "#C6CED5", // frame, lit edge
+        lo: "#5B646C", // frame, shaded edge
+      };
+
+      function logoKey(logo) {
+        // The sprite cache is keyed by name, so the logo has to be part of the
+        // name — otherwise re-uploading would silently keep the old tower.
+        if (!logo) return "n";
+        const s = logo.size + ":" + logo.cells.join(",");
+        let hsh = 2166136261 >>> 0;
+        for (let i = 0; i < s.length; i++) {
+          hsh ^= s.charCodeAt(i);
+          hsh = Math.imul(hsh, 16777619) >>> 0;
+        }
+        return hsh.toString(36);
+      }
+
+      function stampLogo(C, logo) {
+        const { g, a, b, h, L, R } = C;
+        const N = logo.size | 0;
+        const cells = logo.cells;
+        if (!(N >= 4 && N <= LOGO_NMAX) || !Array.isArray(cells) || cells.length !== N * N)
+          return;
+
+        // The only wall a sign can hang on is the shaft: the crown is above the
+        // roof line and the lobby has the doors in it.
+        const shaft = h - LOBBY_H;
+        if (shaft < 12) return; // starter and 2-story towers have no wall to hang it on
+
+        const BORDER = 1,
+          BEZEL = 2,
+          pad = BORDER + BEZEL; // framing on every side of the art
+
+        // The sign is identical on both walls, so it has to fit the narrower one.
+        // Cells are square on screen and can be a single pixel — a 32-cell logo is
+        // 32px of a 48px wall — so we work in pixels, not 2px face columns.
+        const availW = 2 * Math.min(a, b) - 2 * LOGO_MARGIN;
+        const availH = shaft - 2 * LOGO_MARGIN;
+        const cs = Math.floor(Math.min((availW - 2 * pad) / N, (availH - 2 * pad) / N));
+        if (cs < 1) return; // wall too small to frame this many cells
+
+        const art = N * cs,
+          panW = art + 2 * pad,
+          panH = art + 2 * pad;
+
+        const at = (u, v) => (u < 0 || v < 0 || u >= N || v >= N ? null : cells[v * N + u]);
+
+        // Visual left-to-right pixel order. On the SW wall that is ascending; on
+        // the SE wall the near corner is the HIGH column, so it runs backwards.
+        // Mirroring at pixel granularity (not column) keeps 1px cells honest —
+        // without it the sign comes out mirrored on one of the two walls.
+        const walls = [
+          { px: 2 * a, pos: L, flip: false },
+          { px: 2 * b, pos: R, flip: true },
+        ];
+
+        for (const w of walls) {
+          const x0 = (w.px - panW) >> 1, // centred across the wall
+            y0 = (shaft - panH) >> 1; // centred down the wall
+          // One pixel-wide vertical slice of the wall. Each face column steps 1px
+          // down, so the sign shears with the facade and lies IN its plane.
+          const put = (p, yy, hh, c) => {
+            if (p < 0 || p >= w.px || hh <= 0) return;
+            const q = w.flip ? w.px - 1 - p : p;
+            const base = w.pos(q >> 1);
+            P(g, c, base[0] + (q & 1), base[1] + yy, 1, hh);
+          };
+          const band = (yy, hh, c) => {
+            for (let p = 0; p < panW; p++) put(x0 + p, yy, hh, c);
+          };
+
+          band(y0, panH, BILL.face); // frame
+          // A lit top-left edge and a shaded bottom-right one, so it reads as a
+          // panel bolted to the wall rather than a decal printed on it.
+          band(y0 + BORDER, 1, BILL.hi);
+          band(y0 + panH - BORDER - 1, 1, BILL.lo);
+          for (let t = 0; t < BEZEL; t++) {
+            put(x0 + BORDER + t, y0 + BORDER, panH - 2 * BORDER, BILL.hi);
+            put(x0 + panW - BORDER - 1 - t, y0 + BORDER, panH - 2 * BORDER, BILL.lo);
+          }
+          band(y0, BORDER, COL.out); // 1px ink border, all four sides
+          band(y0 + panH - BORDER, BORDER, COL.out);
+          put(x0, y0, panH, COL.out);
+          put(x0 + panW - 1, y0, panH, COL.out);
+
+          // The sign face is opaque: a transparent cell shows backing, never a
+          // window. That is the whole point of the billboard.
+          for (let p = 0; p < art; p++) put(x0 + pad + p, y0 + pad, art, BILL.back);
+
+          for (let v = 0; v < N; v++) {
+            for (let u = 0; u < N; u++) {
+              const c = at(u, v);
+              if (!c) continue;
+              const yy = y0 + pad + v * cs;
+              for (let t = 0; t < cs; t++) put(x0 + pad + u * cs + t, yy, cs, c);
+            }
+          }
+        }
+      }
+
+      function towerSprite(nm, si, S, logo) {
+        const set = BSETS[si];
+        const a = 8 * PTX,
+          b = 8 * PTY;
+        // Every project shows its style's silhouette from the very first story, so
+        // a low-rise city still reads as varied (round towers, obelisks, crystals…)
+        // rather than a field of identical starter boxes. Completing items grows the
+        // tower taller WITHIN its shape, instead of morphing a box into a shape.
+        const h = LOBBY_H + (S - 1) * STORY_H;
+        const room = set.crownRoom;
+        const x0 = 2 * b + TMARG,
+          w = 2 * (a + b) + 2 + 2 * TMARG,
+          y0 = 6 + room; // y0 = the top face; the crown is built above it
+        ANCHORX[nm] = 2 * a + 1 + TMARG;
+        TOWER_PX[nm] = y0 + h;
+
+        def(nm, w, y0 + a + b + h + 2, (g, ph) => {
+          // cell (i,j) of a top face at (bx,by) lands at [bx + 2i - 2j, by + i + j]
+          const L = (i) => [x0 + 2 * i - 2 * (b - 1), y0 + i + b]; // SW face columns
+          const R = (j) => [x0 + 2 * (a - 1) - 2 * j, y0 + a + j]; // SE face columns
+          const fL = (i, yy, hh, c) => {
+            const p = L(i);
+            P(g, c, p[0], p[1] + yy, 2, hh);
+          };
+          const fR = (j, yy, hh, c) => {
+            const p = R(j);
+            P(g, c, p[0], p[1] + yy, 2, hh);
+          };
+          const lit = (i, k) => (i * 7 + k * 5 + ph) % 6 < 2; // window flicker
+
+          // The silhouette draws the whole body itself (see set.silhouette below);
+          // no generic shaft is pre-drawn, so a round/tapered/faceted form isn't
+          // laid over a rectangular box that would peek out behind it.
+
+          // ---- crown scaffolding: stacked setbacks above the top face ----
+          // c < 0 cantilevers out past the footprint (sky decks).
+          let rise = 0;
+          const step = (c, hh, cT, cL, cR) => {
+            const ak = a - 2 * c,
+              bk = b - 2 * c;
+            if (ak < 4 || bk < 4) return null;
+            rise += hh;
+            const yk = y0 + 2 * c - rise;
+            isoBox(g, x0, yk, ak, bk, hh, cT, cL, cR);
+            return {
+              ak,
+              bk,
+              yk,
+              hh,
+              cx: x0 + (ak - bk),
+              cy: yk + ((ak + bk - 2) >> 1),
+            };
+          };
+          // railing standing on a deck's outer edge — this is what reads as a balcony
+          const rail = (ak, bk, yk, col) => {
+            for (let i = 0; i < ak; i++) {
+              const p = [x0 + 2 * i - 2 * (bk - 1), yk + i + bk];
+              P(g, col, p[0], p[1] - 4, 2, 1); // hand rail
+              if (i % 2 === 0) P(g, shade(col, 0.8), p[0], p[1] - 3, 1, 3); // posts
+              P(g, shade(col, 0.7), p[0], p[1], 2, 1);
+            }
+            for (let j = 0; j < bk; j++) {
+              const p = [x0 + 2 * (ak - 1) - 2 * j, yk + ak + j];
+              P(g, shade(col, 0.86), p[0], p[1] - 4, 2, 1);
+              if (j % 2 === 0) P(g, shade(col, 0.68), p[0] + 1, p[1] - 3, 1, 3);
+              P(g, shade(col, 0.6), p[0], p[1], 2, 1);
+            }
+          };
+          // glazed roof: top face in glass with mullions + a specular streak
+          const glassCeiling = (ak, bk, yk, col) => {
+            rhomb(g, x0, yk, ak, bk, col);
+            const mull = shade(col, 0.66);
+            for (let j = 1; j < bk; j += 3)
+              for (let i = 0; i < ak; i++)
+                P(g, mull, x0 + 2 * i - 2 * j, yk + i + j, 2, 1);
+            for (let i = 1; i < ak; i += 3)
+              for (let j = 0; j < bk; j++)
+                P(g, mull, x0 + 2 * i - 2 * j, yk + i + j, 2, 1);
+            for (let t = 1; t < Math.min(ak, bk) - 1; t++)
+              P(g, COL.foam, x0 + 2 * t - 2 * (t + 1), yk + 2 * t + 1, 2, 1);
+          };
+          const mast = (mx, my, hgt, col) => {
+            P(g, COL.out, mx, my - hgt, 2, hgt);
+            P(g, col, mx, my - hgt + 4, 2, 2);
+            P(g, ph ? COL.verm : COL.foam, mx - 1, my - hgt - 3, 3, 3); // beacon
+          };
+
+          // everything a set's silhouette / crown handler needs to draw itself
+          const roofCx = x0 + (a - b),
+            roofCy = y0 + ((a + b - 2) >> 1); // roof-diamond centre in screen space
+          const C = { g, ph, set, a, b, h, x0, y0, S, L, R, fL, fR, lit, step, rail, glassCeiling, mast, roofCx, roofCy };
+
+          // The set's silhouette draws the whole body — shaft, windows, lobby and
+          // its bespoke crown — at any height, including a 1-story project (which is
+          // just a short version of the shape). Prism/setback sets keep a flat
+          // rectangular footprint; the others (cylinder, taper, pyramid, twist,
+          // crystal) sculpt their own outline and ground themselves on the tile.
+          set.silhouette(C);
+
+          // The logo hangs only on flat-walled towers (prism/setback); a curved or
+          // tapered facade has no plane to carry it. Painted last, over the
+          // windows — signage, not a light, so it must not flicker.
+          if (logo && set.flat) stampLogo(C, logo);
+
+          // ---- base outline: flat-footprint towers get the crisp ground edge
+          // here; sculpted silhouettes draw their own base. ----
+          if (set.flat) {
+            const c0 = L(0);
+            P(g, COL.out, c0[0], c0[1], 1, h);
+            for (let i = 0; i < a; i++) {
+              const p = L(i);
+              P(g, COL.out, p[0], p[1] + h - 1, 2, 1);
+            }
+            for (let j = 0; j < b; j++) {
+              const p = R(j);
+              P(g, COL.out, p[0], p[1] + h - 1, 2, 1);
+            }
+          }
+        });
+      }
+
+      // =================================================================
+      // =================================================================
+      // BUILDING CATALOG: 20 modern->futuristic styles. Each set supplies a
+      // parametric silhouette (prism / setback / cylinder / taper / pyramid /
+      // twist / crystal) that draws the whole multi-story body, plus a bespoke
+      // crown. Ported from the tested render harness; see towerSprite for the C
+      // context each silhouette receives.
+      // =================================================================
+      // Hybrid parametric tower engine (prototype). A `set` supplies a palette, a
+      // `silhouette` (shared, parametric — this is where prism vs non-prism lives) and
+      // a bespoke `crown` (per-building signature). Geometry mirrors city.html exactly.
+
+
+      // screen position of top-face cell (i,j) for a top face whose apex is (x0,y0)
+      const cell = (x0, y0, i, j) => [x0 + 2 * i - 2 * j, y0 + i + j]
+
+      // ============================ SILHOUETTES ============================
+      // Each draws the whole multi-story body (shaft + windows + lobby) then calls the
+      // set's bespoke crown. `wallCols(set)` gives a consistent 3-tone lighting ramp.
+      const wallCols = (s) => [s.body, shade(s.body, 0.84), shade(s.body, 0.66)] // top,left,right
+
+      // generic banded-window facade for the two flat iso faces (prism/taper/tier)
+      function facadeFlat(C, opts = {}) {
+        const { set, a, b, h, fL, fR, lit } = C
+        const pattern = opts.pattern || 'grid'
+        // draw per pixel-story down from roof line to lobby
+        const shaftBot = h - LOBBY_H
+        for (let yy = 2; yy < shaftBot; yy += STORY_H) {
+          for (let i = 1; i < a - 1; i++) {
+            const on = lit(i, yy)
+            let c
+            if (pattern === 'ribbon') c = (yy % STORY_H < 6) ? (on ? COL.win : shade(set.glass, 0.82)) : shade(set.body, 0.9)
+            else if (pattern === 'mullion') c = (i % 2 === 1) ? (on ? COL.win : shade(set.glass, 0.8)) : shade(set.body, 0.92)
+            else c = (i % 2 === 1) ? (on ? COL.win : shade(set.glass, 0.85)) : set.body
+            fL(i, yy, STORY_H - 3, c)
+          }
+          for (let j = 1; j < b - 1; j++) {
+            const on = lit(j, yy + 3)
+            let c
+            if (pattern === 'ribbon') c = (yy % STORY_H < 6) ? shade(set.glass, 0.62) : shade(set.body, 0.72)
+            else if (pattern === 'mullion') c = (j % 2 === 1) ? shade(set.glass, 0.6) : shade(set.body, 0.74)
+            else c = (j % 2 === 1) ? shade(set.glass, 0.64) : shade(set.body, 0.8)
+            fR(j, yy, STORY_H - 3, c)
+          }
+        }
+        // lobby: glazed ground floor + entrance
+        const ly = h - LOBBY_H, dm = a >> 1
+        for (let i = 1; i < a - 1; i++) fL(i, ly + 1, LOBBY_H - 1, i & 1 ? shade(set.glass, 0.9) : shade(set.trim, 0.9))
+        for (let j = 1; j < b - 1; j++) fR(j, ly + 1, LOBBY_H - 1, j & 1 ? shade(set.glass, 0.6) : shade(set.trim, 0.7))
+        for (let i = dm - 2; i <= dm + 1; i++) fL(i, ly + 5, LOBBY_H - 6, '#20242A')
+        P(C.g, set.accent, C.L(dm - 2)[0], C.L(dm - 2)[1] + ly + 4, 8, 1)
+      }
+
+      function baseOutline(C) {
+        const { g, a, b, h, L, R } = C
+        const c0 = L(0); P(g, COL.out, c0[0], c0[1], 1, h)
+        for (let i = 0; i < a; i++) { const p = L(i); P(g, COL.out, p[0], p[1] + h - 1, 2, 1) }
+        for (let j = 0; j < b; j++) { const p = R(j); P(g, COL.out, p[0], p[1] + h - 1, 2, 1) }
+      }
+
+      // ---- prism: the clean rectangular baseline ----
+      function silPrism(C) {
+        const { g, set, x0, y0, a, b, h } = C
+        const [t, l, r] = wallCols(set)
+        isoBox(g, x0, y0, a, b, h, t, l, r)
+        facadeFlat(C, { pattern: set.windows || 'grid' })
+        ;(set.crown || crownFlatDeck)(C)
+      }
+
+      const lerp2 = (p, q, f) => [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f]
+
+      // ---- taper: walls batter inward toward the top (obelisk/blade) ----
+      function silTaper(C) {
+        const { g, set, x0, y0, a, b, h } = C
+        const [t, l, r] = wallCols(set)
+        const inset = set.taper ?? 8
+        const midI = (a - 1) / 2, midJ = (b - 1) / 2
+        const kTop = 1 - inset / a
+        const dn = (p) => [p[0], p[1] + h]
+        const sc = (k, ci, cj) => cell(x0, y0, midI + (ci - midI) * k, midJ + (cj - midJ) * k)
+        // bottom (full) corners projected down, and top (narrow) corners
+        const bN = dn(cell(x0, y0, 0, 0)), bE = dn(cell(x0, y0, a - 1, 0)), bS = dn(cell(x0, y0, a - 1, b - 1)), bW = dn(cell(x0, y0, 0, b - 1))
+        const tN = sc(kTop, 0, 0), tE = sc(kTop, a - 1, 0), tS = sc(kTop, a - 1, b - 1), tW = sc(kTop, 0, b - 1)
+        fillPoly(g, [bW, bS, tS, tW], l)     // SW / left wall
+        fillPoly(g, [bS, bE, tE, tS], r)     // SE / right wall
+        fillPoly(g, [tN, tE, tS, tW], t)     // top face
+        // horizontal ribbon windows following the batter (f: 0 bottom -> 1 top)
+        const nb = Math.floor((h - 8) / STORY_H)
+        for (let s = 0; s < nb; s++) {
+          const fa = (s + 0.25) / nb, fb = (s + 0.75) / nb
+          // left wall glass strip
+          fillPoly(g, [lerp2(bW, tW, fa), lerp2(bS, tS, fa), lerp2(bS, tS, fb), lerp2(bW, tW, fb)], shade(set.glass, 0.82))
+          fillPoly(g, [lerp2(bS, tS, fa), lerp2(bE, tE, fa), lerp2(bE, tE, fb), lerp2(bS, tS, fb)], shade(set.glass, 0.6))
+        }
+        // lobby band
+        fillPoly(g, [bW, bS, lerp2(bS, tS, 0.12), lerp2(bW, tW, 0.12)], shade(set.trim, 0.85))
+        fillPoly(g, [bS, bE, lerp2(bE, tE, 0.12), lerp2(bS, tS, 0.12)], shade(set.trim, 0.7))
+        ;(set.crown || crownSpire)(C)
+      }
+
+      // ---- cylinder: round tower, stacked ellipse rings, glass crown ----
+      // Grounded off the footprint front vertex (gb) so the round base sits ON the
+      // tile instead of floating — the sprite is placed by its canvas bottom.
+      function silCylinder(C) {
+        const { g, set, a, b, h, roofCx, y0 } = C
+        const rx = a + b - 4, ry = 12
+        const cx = roofCx + 1
+        const gb = y0 + a + b + h - 2 // ground bottom ≈ canvas bottom
+        const baseC = gb - ry         // base cap centre
+        const topC = baseC - h        // top cap centre
+        const roundF = (dx) => 0.6 + 0.36 * (1 - (dx + rx) / (2 * rx)) // left lit, right dark
+        for (let dx = -rx; dx <= rx; dx++) {
+          const tt = dx / rx
+          const colH = Math.round(ry * Math.sqrt(Math.max(0, 1 - tt * tt)))
+          P(g, shade(set.body, roundF(dx)), cx + dx, topC - colH, 1, h + 2 * colH)
+        }
+        for (let yy = topC + 10; yy < baseC - 2; yy += STORY_H) {
+          for (let dx = -rx + 3; dx <= rx - 3; dx++) {
+            if ((((dx + rx) >> 1) & 1) === 0) continue // dashed
+            const on = C.lit(dx, yy)
+            P(g, on ? COL.win : shade(set.glass, roundF(dx)), cx + dx, yy, 1, STORY_H - 6)
+          }
+        }
+        E(g, shade(set.body, 0.5), cx, topC + 1, rx, ry)
+        E(g, set.body, cx, topC, rx, ry)
+        E(g, shade(set.body, 1.06), cx, topC - 2, rx - 3, ry - 2)
+        ;(set.crown || crownDome)({ ...C, roofCy: topC })
+      }
+
+      // ---- crystal: clean faceted monolith, tapering + slightly turned ----
+      function silCrystal(C) {
+        const { g, set, roofCx, a, b, h, y0 } = C
+        const bands = Math.max(5, Math.floor(h / 9))
+        const ox = roofCx + 1
+        const half = (a + b) / 3.1
+        const bh = h / bands
+        const baseY = y0 + a + b + h - 2 - half * 0.5 // bottom band base rests on the tile
+        for (let s = bands - 1; s >= 0; s--) {
+          const f = s / (bands - 1)
+          const th = 0.16 + f * 0.5
+          const scl = 1 - 0.42 * f
+          const oy = baseY - s * bh
+          isoPrism(g, ox, oy, th, 0, 0, half * scl, half * scl, 0, bh + 1,
+            shade(set.body, 1.02),
+            (tt) => shade(set.body, 0.58 + 0.4 * (tt * 0.5 + 0.5)))
+        }
+        ;(set.crown || crownSpire)({ ...C, roofCy: baseY - (bands - 1) * bh - 4 })
+      }
+
+      // ---- twist: corkscrew tower, near-constant width, strong per-band rotation ----
+      function silTwist(C) {
+        const { g, set, roofCx, a, b, h, y0 } = C
+        const bands = Math.max(6, Math.floor(h / 7))
+        const ox = roofCx + 1
+        const half = (a + b) / 3.0
+        const bh = h / bands
+        const baseY = y0 + a + b + h - 2 - half * 0.5 // bottom band rests on the tile
+        for (let s = bands - 1; s >= 0; s--) {
+          const f = s / (bands - 1)
+          const th = f * 1.05 // twist over the height (kept under 45deg mid to avoid a pinch)
+          const scl = 1 - 0.06 * f // very slight taper so the top reads
+          const oy = baseY - s * bh
+          isoPrism(g, ox, oy, th, 0, 0, half * scl, half * scl, 0, bh + 1,
+            shade(set.body, 1.0),
+            (tt) => shade(((s & 1) ? set.glass : set.body), 0.56 + 0.4 * (tt * 0.5 + 0.5)))
+        }
+        ;(set.crown || crownSpire)({ ...C, roofCy: baseY - (bands - 1) * bh - 4 })
+      }
+
+      // ---- pyramid: sharp taper to a near-point apex (futuristic spike) ----
+      function silPyramid(C) {
+        const s = C.set
+        silTaper({ ...C, set: { ...s, taper: s.taper ?? 16 } })
+      }
+
+      // ---- setback: clean stepped ziggurat, widest at the base ----
+      function silSetback(C) {
+        const { g, set, x0, y0, a, b, h } = C
+        const [t, l, r] = wallCols(set)
+        const h0 = Math.round(h * 0.42), h1 = Math.round(h * 0.32), h2 = h - h0 - h1
+        // draw bottom (widest, lowest) first, then up
+        const tiers = [
+          { c: 0, topY: y0 + h2 + h1, hh: h0 },
+          { c: 4, topY: y0 + h2, hh: h1 },
+          { c: 8, topY: y0, hh: h2 },
+        ]
+        for (const tr of tiers) {
+          const ak = a - 2 * tr.c, bk = b - 2 * tr.c
+          isoBox(g, x0, tr.topY, ak, bk, tr.hh, t, l, r)
+          // window dashes on this tier's SW/SE faces
+          for (let yy = 4; yy < tr.hh - 2; yy += STORY_H) {
+            for (let i = 1; i < ak - 1; i++) { const p = cell(x0, tr.topY, i, bk - 1); P(g, (i & 1) ? shade(set.glass, 0.82) : l, p[0], p[1] + yy + bk - 1, 2, STORY_H - 4) }
+            for (let j = 1; j < bk - 1; j++) { const p = cell(x0, tr.topY, ak - 1, j); P(g, (j & 1) ? shade(set.glass, 0.6) : r, p[0], p[1] + yy + ak - 1, 2, STORY_H - 4) }
+          }
+          P(g, set.accent, cell(x0, tr.topY, 0, bk - 1)[0], cell(x0, tr.topY, 0, bk - 1)[1] + bk, a, 1) // string course
+        }
+        ;(set.crown || crownFlatDeck)(C)
+      }
+
+      // ============================ CROWNS (bespoke-ish) ============================
+      function crownFlatDeck(C) {
+        const { g, set, roofCx, roofCy } = C
+        P(g, shade(set.trim, 0.9), roofCx - 8, roofCy - 2, 16, 3)
+        isoBox(g, C.x0 + 6, C.y0 + 6, C.a - 6, C.b - 6, 5, shade(set.body, 0.8), shade(set.body, 0.7), shade(set.body, 0.6))
+        C.mast(roofCx, roofCy - 4, 14, set.accent)
+      }
+      function crownDome(C) {
+        const { g, set, roofCx } = C
+        const topY = C.roofCy // honors the silhouette's overridden roof centre
+        const rx = C.a + C.b - 8
+        E(g, shade(set.accent, 1.0), roofCx + 1, topY - 4, rx / 2, rx / 5)
+        E(g, shade(set.glass, 1.0), roofCx + 1, topY - 6, rx / 2 - 3, rx / 6)
+        C.mast(roofCx + 1, topY - 8, 12, set.accent)
+      }
+      function crownSpire(C) {
+        const { g, set, roofCx, roofCy } = C
+        C.mast(roofCx, roofCy - 2, 26, set.accent)
+      }
+      function crownAntenna(C) {
+        const { set, roofCx, roofCy } = C
+        C.mast(roofCx - 6, roofCy, 12, set.accent)
+        C.mast(roofCx + 6, roofCy, 16, set.accent)
+        C.mast(roofCx, roofCy - 2, 22, set.accent)
+      }
+      // clean elliptical halo ring floating on two struts above the roof
+      function crownHalo(C) {
+        const { g, set, roofCx, roofCy, a, b } = C
+        const cx = roofCx + 1, cy = roofCy - 13
+        const rx = (a + b) / 2 - 2, ry = (a + b) / 8
+        P(g, shade(set.trim, 0.7), cx - 5, cy, 2, 13) // struts
+        P(g, shade(set.trim, 0.6), cx + 4, cy, 2, 13)
+        E(g, shade(set.accent, 0.95), cx, cy, rx, ry)
+        g.globalCompositeOperation = 'destination-out'
+        E(g, '#000', cx, cy, rx - 3, ry - 2)
+        g.globalCompositeOperation = 'source-over'
+        E(g, set.accent, cx, cy - 1, rx, 1) // lit top rim
+      }
+      // tilted solar sail panel
+      function crownSail(C) {
+        const { g, set, roofCx, roofCy } = C
+        const cx = roofCx + 1
+        fillPoly(g, [[cx - 12, roofCy - 4], [cx + 10, roofCy - 16], [cx + 12, roofCy - 12], [cx - 10, roofCy], ], shade(set.accent, 0.9))
+        fillPoly(g, [[cx - 10, roofCy - 2], [cx + 10, roofCy - 14], [cx + 10, roofCy - 13], [cx - 10, roofCy - 1]], shade(set.glass, 1.1))
+        for (let t = -8; t <= 8; t += 3) P(g, shade(set.body, 0.5), cx + t, roofCy - 8 + (t * -0.55 | 0), 1, 1)
+        C.mast(cx - 12, roofCy, 8, set.trim)
+      }
+      // stepped sky-garden terraces (planted crown)
+      function crownGarden(C) {
+        const { g, set, x0, y0, a, b } = C
+        const grn = ['#1FBF85', '#27AE7E', '#148F63']
+        for (let s = 0; s < 3; s++) {
+          const c = 3 + s * 3, ak = a - 2 * c, bk = b - 2 * c
+          if (ak < 4) break
+          const yk = y0 - s * 5
+          isoBox(g, x0, yk - 4, ak, bk, 4, grn[s], shade(grn[s], 0.8), shade(grn[s], 0.66))
+          rhomb(g, x0, yk - 4, ak, bk, grn[s])
+        }
+        C.mast(C.roofCx, y0 - 14, 10, set.accent)
+      }
+      // twin masts + cross beam (comms rig)
+      function crownTwinMast(C) {
+        const { roofCx, roofCy, set, g } = C
+        C.mast(roofCx - 7, roofCy, 18, set.accent)
+        C.mast(roofCx + 7, roofCy, 14, set.accent)
+        P(g, shade(set.trim, 0.8), roofCx - 7, roofCy - 14, 16, 2)
+      }
+      // single beacon pylon on a small deck
+      function crownBeacon(C) {
+        const { g, set, roofCx, roofCy } = C
+        isoBox(g, C.x0 + 8, C.y0 + 8, C.a - 8, C.b - 8, 4, shade(set.body, 0.8), shade(set.body, 0.7), shade(set.body, 0.6))
+        C.mast(roofCx, roofCy - 3, 20, set.accent)
+      }
+
+      // ---- construction equipment: on the lot while items are still open ----
+      function pcSprite(nm, tx, ty, marg, room, h, fn) {
+        const a = 8 * tx,
+          b = 8 * ty;
+        const x0 = 2 * b + marg,
+          w = 2 * (a + b) + 2 + 2 * marg,
+          y0 = 6 + room;
+        ANCHORX[nm] = 2 * a + 1 + marg;
+        def(nm, w, y0 + a + b + h + 2, (g, ph) => {
+          E(g, COL.sh, 2 * a + 1 + marg, y0 + a + b + h, Math.min(a, b) + 4, 2);
+          fn(g, ph, x0, y0, a, b, h, x0 + (a - b), y0 + ((a + b - 2) >> 1));
+        });
+      }
+      const HAZ = "#FFCC0F",
+        HAZD = "#1E2124",
+        STEEL = "#9EA6AD",
+        STEELD = "#5C646C";
+
+      // ---- tower crane ----
+      // The crane is two sprites, not one. The mast is baked per height, so it
+      // climbs with its tower instead of standing at a fixed 78px. The slewing
+      // top — cab, jib, counter-jib, counterweight, hook — is baked at the same
+      // NYAW yaw steps as the cars and stacked on the mast top by its dy, so the
+      // heading bake is shared by every crane in the city rather than re-baked
+      // once per mast height. Jib parts are iso prisms at arbitrary yaw, so the
+      // boom sweeps the sky smoothly instead of snapping to a screen axis.
+      const craneMastName = (mh) => "pcCraneM" + mh;
+      // mast tops out 26px over its tower's crown, with a floor so a 1-story
+      // starter still gets a crane worth looking at
+      const craneMastH = (towerPx) =>
+        Math.max(70, Math.min(240, Math.round(towerPx) + 26));
+      function craneMast(mh) {
+        const nm = craneMastName(mh);
+        if (tiles[nm + "#0"]) return nm; // one bake per distinct height
+        pcSprite(nm, 1, 1, 10, mh, 5, (g, ph, x0, y0, a, b, h, cx, cy) => {
+          isoBox(g, x0, y0, a, b, h, HAZ, shade(HAZ, 0.8), shade(HAZ, 0.62)); // hazard pad
+          for (let i = 0; i < a; i += 2)
+            P(g, HAZD, x0 + 2 * i - 2 * (b - 1), y0 + i + b, 2, h);
+          for (let t = 0; t < mh; t++) {
+            // lattice mast
+            P(g, t % 6 < 3 ? STEEL : STEELD, cx - 2, cy - t, 5, 1);
+            if (t % 6 === 0) P(g, HAZD, cx - 2, cy - t, 5, 1);
+          }
+        });
+        return nm;
+      }
+      // whole-pixel line: the tie-bars, drawn without canvas AA like everything else
+      function pxLine(g, c, ax, ay, bx, by) {
+        let x = Math.round(ax),
+          y = Math.round(ay);
+        const x1 = Math.round(bx),
+          y1 = Math.round(by);
+        const dx = Math.abs(x1 - x),
+          sx = x < x1 ? 1 : -1;
+        const dy = -Math.abs(y1 - y),
+          sy = y < y1 ? 1 : -1;
+        let e = dx + dy;
+        for (;;) {
+          P(g, c, x, y);
+          if (x === x1 && y === y1) return;
+          const e2 = 2 * e;
+          if (e2 >= dy) {
+            e += dy;
+            x += sx;
+          }
+          if (e2 <= dx) {
+            e += dx;
+            y += sy;
+          }
+        }
+      }
+      // slew unit, in eighth-tile units about the mast top (the pivot)
+      const SLEW_W = 92,
+        SLEW_H = 68,
+        SLEW_PX = 46, // pivot column: aligns with the mast's centre line
+        SLEW_PY = 26, // pivot row: the jib rises above it, the hook hangs below
+        JIB = 15, // jib reach, in eighths of a tile (~1.9 tiles)
+        CJIB = 7;
+      // dy that drops a slew sprite's pivot exactly onto a mast of height mh:
+      // the mast sprite puts its top -10-mh px from the tile centre, and the
+      // slew sprite's pivot sits SLEW_H-SLEW_PY px above its own baseline.
+      const slewDy = (mh) => SLEW_H - SLEW_PY - 10 - mh;
+      // The slewing top renders LIVE each frame at the crane's exact continuous
+      // heading (see cranesNow) instead of snapping to one of NYAW baked yaw
+      // steps, so the boom sweeps smoothly rather than clicking between fixed
+      // orientations. Same jib / counter-jib / cab / hook geometry as before.
+      function drawSlew(g, th, ph) {
+        const co = Math.cos(th),
+          si = Math.sin(th);
+        const rot = (lx, ly) => [lx * co - ly * si, lx * si + ly * co];
+        const SX = (u) => SLEW_PX + 2 * (u[0] - u[1]),
+          SY = (u, z) => SLEW_PY + u[0] + u[1] - z;
+        const depth = (lx, ly) => lx * (co + si) + ly * (co - si); // toward camera
+          const steel = (t) => shade(STEEL, 0.66 + 0.16 * t);
+          const dark = (t) => shade(STEELD, 0.7 + 0.18 * t);
+          const box = (fx, fy, L, W, z0, z1, cT, cW) =>
+            isoPrism(g, SLEW_PX, SLEW_PY, th, fx, fy, L, W, z0, z1, cT, cW);
+          // lattice ticks along a beam: dark rungs marching down its top edge,
+          // spaced in local x so they foreshorten with the beam as it turns
+          const rungs = (x0, x1, z0, z1) => {
+            for (let t = x0; t <= x1; t += 2) {
+              const u = rot(t, 0);
+              P(g, HAZD, SX(u), SY(u, z1), 1, Math.max(1, Math.round(z1 - z0)));
+            }
+          };
+          const parts = [
+            {
+              d: depth(-CJIB - 2, 0), // counterweight slab
+              f: () => box(-CJIB - 2, 0, 3, 4, 0.5, 5, HAZD, (t) => shade(HAZD, 1.5 + 0.5 * t)),
+            },
+            {
+              d: depth(-CJIB / 2, 0), // counter-jib
+              f: () => {
+                box(-CJIB / 2, 0, CJIB, 1.6, 2.6, 4.2, STEEL, dark);
+                rungs(-CJIB + 1, -1, 2.6, 4.2);
+              },
+            },
+            {
+              d: depth(1.6, 0), // cab, riding the slew ring
+              f: () => {
+                box(1.6, 0, 3.2, 2.8, -1, 3.4, STEELD, steel);
+                const w = rot(1.6, co - si > 0 ? 1.4 : -1.4); // camera-facing wall
+                P(g, COL.win, SX(w) - 1, SY(w, 2.4), 2, 2);
+              },
+            },
+            {
+              d: depth((2 + JIB) / 2, 0), // jib
+              f: () => {
+                box((2 + JIB) / 2, 0, JIB - 2, 1.5, 2.4, 4, STEEL, dark);
+                rungs(3, JIB - 1, 2.4, 4);
+              },
+            },
+            {
+              d: depth(JIB - 1.5, 0), // trolley + hook block, swaying on the clock
+              f: () => {
+                const u = rot(JIB - 1.5, 0);
+                const x = SX(u),
+                  y = SY(u, 2.4),
+                  drop = 16 + (ph ? 4 : 0);
+                P(g, STEELD, x, y, 1, drop);
+                P(g, HAZ, x - 2, y + drop, 5, 3);
+              },
+            },
+          ];
+          parts.sort((a, b) => a.d - b.d); // painter: far parts first
+          for (const p of parts) p.f();
+          // A-frame apex + tie-bars: above every beam, so it paints last cleanly
+          box(0, 0, 1.4, 1.4, 4.4, 10, STEEL, dark);
+          const apex = SX([0, 0]),
+            apexY = SY([0, 0], 10);
+          const tie = (lx, z) => {
+            const u = rot(lx, 0);
+            pxLine(g, STEELD, apex, apexY, SX(u), SY(u, z));
+          };
+          tie(JIB - 1, 4); // fore-stay, out to the jib tip
+          tie(-CJIB + 0.5, 4.2); // back-stay
+          P(g, ph ? COL.verm : COL.foam, apex - 1, apexY - 2, 2, 2); // beacon
+      }
+      // one reusable offscreen canvas per crane, redrawn each frame at the live angle
+      const slewLive = [];
+      function slewCanvas(i) {
+        if (!slewLive[i]) {
+          const c = document.createElement("canvas");
+          c.width = SLEW_W;
+          c.height = SLEW_H;
+          ANCHORX["pcSlewLive" + i] = SLEW_PX + 1;
+          slewLive[i] = c;
+        }
+        return slewLive[i];
+      }
+
+      pcSprite("pcScaff", 1, 1, 10, 34, 4, (g, ph, x0, y0, a, b, h, cx, cy) => {
+        isoBox(g, x0, y0, a, b, h, "#8A6238", "#6E4A2E", "#523620");
+        for (let lv = 0; lv < 3; lv++) {
+          const yy = cy - 10 * lv - 8;
+          for (let i = -10; i <= 10; i++) P(g, i % 5 === 0 ? STEELD : STEEL, cx + i, yy, 1, 2); // deck
+          P(g, "#C9A227", cx - 10, yy - 1, 21, 1); // plank
+          P(g, STEELD, cx - 10, yy, 1, 10); // uprights
+          P(g, STEELD, cx + 9, yy, 1, 10);
+          if (lv === 1) P(g, ph ? HAZ : COL.verm, cx + 2, yy - 3, 3, 3); // worker lamp
+        }
+        P(g, HAZ, cx - 11, cy - 2, 22, 2);
+      });
+
+      pcSprite("pcBarrier", 1, 1, 8, 14, 3, (g, ph, x0, y0, a, b, h, cx, cy) => {
+        isoBox(g, x0, y0, a, b, h, "#C6C0AE", "#9EA6AD", "#7C848C");
+        for (let i = 0; i < 3; i++) {
+          const bx = cx - 9 + i * 7;
+          P(g, HAZD, bx, cy - 9, 6, 9); // A-frame barrier
+          P(g, i & 1 ? COL.verm : HAZ, bx, cy - 7, 6, 3);
+          P(g, COL.foam, bx + 1, cy - 9, 4, 1);
+        }
+        P(g, ph ? COL.verm : shade(COL.verm, 0.5), cx - 2, cy - 12, 3, 3); // flasher
+      });
+
+      pcSprite("pcMats", 1, 1, 8, 18, 4, (g, ph, x0, y0, a, b, h, cx, cy) => {
+        isoBox(g, x0, y0, a, b, h, "#8A6238", "#6E4A2E", "#523620");
+        isoBox(g, x0 + 2, y0 - 6, 5, 5, 6, STEEL, STEELD, shade(STEELD, 0.8)); // girder stack
+        for (let k = 0; k < 4; k++) P(g, HAZ, cx - 8 + k * 4, cy - 12 - k, 3, 2);
+        E(g, "#B04A2A", cx + 7, cy - 6, 4, 3); // sand pile
+        E(g, "#D06A3A", cx + 7, cy - 7, 3, 2);
+        P(g, ph ? HAZ : shade(HAZ, 0.7), cx - 11, cy - 8, 2, 6); // rebar bundle
+      });
+
+      // PLOTS / lotGear are defined up with the street furniture, which reserves
+      // the hoarding tiles before benches and lamps get scattered.
+      let PROJECTS = [],
+        projObjs = [],
+        craneRigs = [], // one per crane: its tile, mast height, and slew phase
+        skylinePx = 0;
+
+      function rebuildProjects(list) {
+        // Grow/shrink the city grid to fit the project count (up to 100 blocks).
+        // Rebuilding regenerates the map + PLOTS; buildGround re-rasterizes it.
+        const wantGrid = gridForCount(list.length);
+        if (wantGrid !== GRID) {
+          buildCity(wantGrid);
+          buildGround();
+        }
+        PROJECTS = list;
+        projObjs = [];
+        craneRigs = [];
+        skylinePx = 0;
+        list.forEach((p, idx) => {
+          const lot = PLOTS[idx];
+          if (!lot || !p.render_progress) return; // toggle off -> no progress rendered
+          const si = styleFor(p.id);
+          const S = Math.max(1, Math.min(MAX_STORIES, p.stories | 0));
+          const logo = p.logo && Array.isArray(p.logo.cells) ? p.logo : null;
+          const nm = "proj" + p.id + "_" + si + "_" + S + "_" + logoKey(logo);
+          if (!tiles[nm + "#0"]) towerSprite(nm, si, S, logo);
+          if (!tiles[nm + "@hi#0"]) bakeHalo(nm, nm + "@hi"); // hover highlight
+          const { px, py } = lot;
+          // A 3x3 tower cannot sit centred on a 4x4 pad at whole-tile steps: the
+          // old south corner at (px+2,py+2) left a full pad row bare on each of
+          // the two street-facing sides. Half-tile steps centre it exactly — the
+          // pad and the block share a centre, and a +0.5/+0.5 shift is pure
+          // screen-y in iso, so the sprite stays on the pixel grid.
+          // pid tags this object as pickable: the tower is the project's handle.
+          projObjs.push({ s: nm, x: px + 2.5, y: py + 2.5, dy: 8, pid: p.id }); // 3x3, centred
+          skylinePx = Math.max(skylinePx, TOWER_PX[nm]);
+
+          const open = p.open | 0;
+          if (open > 0) {
+            const G = lotGear(lot);
+            // The mast is a plain object; its slewing top is drawn per frame by
+            // cranesNow(), which lands on the same tile and so sorts right after
+            // the mast (equal depth key, stable sort) — on top of it, as it should.
+            const mh = craneMastH(TOWER_PX[nm]);
+            craneRigs.push({ x: G.crane[0], y: G.crane[1], mh, th0: p.id * 1.7 });
+            skylinePx = Math.max(skylinePx, mh + 30); // keep the jib in frame
+            const eq = [[craneMast(mh), ...G.crane]];
+            if (open >= 2) eq.push(["pcScaff", ...G.scaff]);
+            if (open >= 3) eq.push(["pcMats", ...G.mats]);
+            for (let k = 0; k < Math.min(G.barriers.length, open - 1); k++)
+              eq.push(["pcBarrier", ...G.barriers[k]]);
+            for (const [s, x, y] of eq) projObjs.push({ s, x, y, dy: 6 });
+          }
+        });
+        buildGround(); // taller skyline -> zoom out
+        renderPanel();
+      }
+
+      // Every crane slews: a slow sinusoidal sweep, each rig on its own phase, so
+      // the lot never looks like a row of metronomes. The heading is continuous —
+      // and now so is the render: the slewing top is redrawn live at the exact
+      // angle each frame (drawSlew) rather than snapped to a baked yaw step, so the
+      // boom glides between positions. ~0.24 rad/s at the fastest, a real crane's pace.
+      function cranesNow(tms) {
+        const slow = Math.floor(tms / 280);
+        return craneRigs.map((r, i) => {
+          const th = r.th0 + 2 * Math.sin(tms * 0.00012 + r.th0);
+          const ph = (Math.floor(r.x + r.y) + slow) & 1; // match the blit's phase pick
+          const c = slewCanvas(i);
+          const cg = c.getContext("2d");
+          cg.clearRect(0, 0, SLEW_W, SLEW_H);
+          drawSlew(cg, th, ph);
+          const nm = "pcSlewLive" + i;
+          tiles[nm + "#0"] = c;
+          tiles[nm + "#1"] = c;
+          return { s: nm, x: r.x, y: r.y, dy: slewDy(r.mh) };
+        });
+      }
+
+      async function loadProjects() {
+        try {
+          const r = await fetch("/api/projects", { cache: "no-store" });
+          if (!r.ok) return;
+          rebuildProjects(await r.json());
+        } catch (e) {
+          /* served standalone: the city just renders without towers */
+        }
+      }
+
+      // ---- HUD: per-project render toggle ----
+      const $plist = document.getElementById("pclist");
+      function renderPanel() {
+        $plist.replaceChildren();
+        if (!PROJECTS.length) {
+          const d = document.createElement("div");
+          d.className = "pcrow pcempty";
+          d.textContent = "NO PROJECTS — LAND IS ZONED";
+          $plist.append(d);
+          return;
+        }
+        PROJECTS.forEach((p, idx) => {
+          const row = document.createElement("div");
+          row.className = "pcrow" + (p.render_progress ? "" : " off");
+          const nm = document.createElement("span");
+          nm.className = "pcname";
+          const built = p.items.filter((i) => i.done).length;
+          nm.textContent = p.title;
+          const st = document.createElement("span");
+          st.className = "pcstat";
+          st.textContent =
+            idx >= PLOTS.length
+              ? "NO LOT"
+              : p.stories + "F " + built + "/" + p.items.length;
+          const btn = document.createElement("button");
+          btn.className = "pctog";
+          btn.textContent = p.render_progress ? "ON" : "OFF";
+          btn.title = "Render this project's progress in the city";
+          btn.onclick = async () => {
+            btn.disabled = true;
+            await fetch("/api/projects/" + p.id, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ render_progress: !p.render_progress }),
+            });
+            loadProjects();
+          };
+          row.append(nm, st, btn);
+          $plist.append(row);
+        });
+      }
+
+      // =================================================================
+      // RENDER: ground prerendered per phase; RAF at display rate.
+      // Sprite flips stay on a 280ms retro clock; motion (cars, falls)
+      // interpolates every frame.
+      // =================================================================
+      const cv = document.getElementById("cv");
+      const ctx = cv.getContext("2d");
+
+      const SKIRTS = {
+        rock: (i) =>
+          i % 6 === 0 ? COL.cliffB : i < TW / 2 ? COL.cliffL : COL.rockD,
+        earth: (i) =>
+          i % 7 === 0 ? COL.earthD : i < TW / 2 ? COL.earthL : COL.earthR,
+        fall: (i) => {
+          const m = i % 8;
+          return m < 1 ? COL.foam : m < 5 ? "#2FA8EC" : COL.waterHL;
+        },
+      };
+      function drawSkirtTo(g, X, Y, hpx, s, style) {
+        const pick = SKIRTS[style];
+        // Column edges are snapped to whole pixels so half-step zoom levels
+        // (s = 1.5, 0.5) can't open hairline seams down a cliff face.
+        for (let i = 0; i < TW; i++) {
+          const xa = Math.round(X + i * s),
+            xb = Math.round(X + (i + 1) * s);
+          g.fillStyle = pick(i);
+          g.fillRect(xa, Math.round(Y + (edgeY(i) + 1) * s), Math.max(1, xb - xa), hpx);
+        }
+      }
+
+      let VP = null;
+      const groundLayer = [null, null];
+      let fallRects = [];
+
+      function buildGround() {
+        const W = window.innerWidth,
+          H = window.innerHeight;
+        cv.width = W;
+        cv.height = H;
+        // The skyline is headroom the fit has to pay for: as project towers gain
+        // stories the whole map scales down so they stay in frame. Quarter steps
+        // keep every tile dimension whole (TW/2, TH/2 and EH all divide by 4),
+        // so the pixel grid survives the zoom.
+        const raw = Math.min(
+          W / (CITY * TW + 68),
+          H / (CITY * TH + 96 + skylinePx),
+        );
+        const s = Math.max(0.25, Math.floor(raw * 4) / 4);
+        const ccx = CX0 + CITY / 2,
+          ccy = CY0 + CITY / 2;
+        const ox = Math.round(W / 2 - (ccx - ccy) * (TW / 2) * s);
+        const oy = Math.round(
+          H / 2 - (ccx + ccy) * (TH / 2) * s + (skylinePx * s) / 2,
+        );
+        VP = { W, H, s, ox, oy };
+        fallRects = [];
+        for (let ph = 0; ph < 2; ph++) {
+          const c = document.createElement("canvas");
+          c.width = W;
+          c.height = H;
+          const g = c.getContext("2d");
+          g.imageSmoothingEnabled = false;
+          for (let d = 0; d <= MW + MH - 2; d++)
+            for (
+              let y = Math.max(0, d - MW + 1);
+              y <= Math.min(d, MH - 1);
+              y++
+            ) {
+              const x = d - y;
+              const X = ox + (x - y) * (TW / 2) * s,
+                Y = oy + (x + y) * (TH / 2) * s - elev[y][x] * EH * s;
+              if (
+                X + TW * s < 0 ||
+                X > W ||
+                Y + (TH + elev[y][x] * EH) * s < 0 ||
+                Y > H
+              )
+                continue;
+              if (elev[y][x] > 0) {
+                drawSkirtTo(g, X, Y, elev[y][x] * EH * s, s, skirt[y][x]);
+                if (ph === 0 && skirt[y][x] === "fall") {
+                  // Only the strip of skirt that clears the tile in front is on
+                  // screen; the rest is buried under terrain drawn later. The
+                  // halves are hidden by different neighbours -- left by (x,y+1),
+                  // right by (x+1,y) -- so each gets its own exposed height, and
+                  // water is drawn on those alone. Flat stretches of the river
+                  // bury their skirt entirely and carry no falling water.
+                  const e = elev[y][x];
+                  const expL =
+                    Math.max(0, e - ((elev[y + 1] || [])[x] || 0)) * EH * s;
+                  const expR = Math.max(0, e - (elev[y][x + 1] || 0)) * EH * s;
+                  if (expL > 0 || expR > 0)
+                    fallRects.push({ X, Y, expL, expR });
+                }
+              }
+              g.drawImage(tiles[ground[y][x] + "#" + ph], X, Y, TW * s, TH * s);
+            }
+          groundLayer[ph] = c;
+        }
+      }
+
+      function draw(tms) {
+        const { s, ox, oy } = VP;
+        const slow = Math.floor(tms / 280);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(groundLayer[slow & 1], 0, 0);
+
+        ctx.fillStyle = COL.foam; // waterfall: smooth fall, clipped to the visible face
+        for (const r of fallRects)
+          for (let i = 2; i < TW; i += 5) {
+            const h = i < TW / 2 ? r.expL : r.expR;
+            if (h <= 0) continue;
+            const off = (i * 7 * s + tms * 0.05 * s) % h;
+            ctx.fillRect(
+              Math.round(r.X + i * s),
+              Math.round(r.Y + (edgeY(i) + 1) * s + off),
+              Math.max(1, Math.round(s)),
+              Math.min(Math.max(1, Math.round(2 * s)), h - off),
+            );
+          }
+
+        const sx = (x, y) => ox + (x - y) * (TW / 2) * s;
+        const sy = (x, y) => oy + (x + y) * (TH / 2) * s;
+        const frame = objs
+          .concat(projObjs)
+          .concat(trafficNow(tms))
+          .concat(cranesNow(tms)) // last: a slew unit ties with its own mast, and
+          .sort((a, b) => a.x + a.y - (b.x + b.y) || a.y - b.y); // a stable sort keeps it on top
+        const act = activePid();
+        for (const o of frame) {
+          const lit =
+            o.pid !== undefined && o.pid === act && tiles[o.s + "@hi#0"]
+              ? o.s + "@hi"
+              : null;
+          const nm = lit || o.s;
+          const sp = tiles[nm + "#" + ((Math.floor(o.x + o.y) + slow) & 1)];
+          const ex = (elev[Math.round(o.y)] || [])[Math.round(o.x)] || 0;
+          const cx = sx(o.x, o.y) + (TW / 2) * s;
+          const cy = sy(o.x, o.y) + (TH / 2) * s - ex * EH * s;
+          const axr = ANCHORX[nm] !== undefined ? ANCHORX[nm] : sp.width / 2;
+          ctx.drawImage(
+            sp,
+            Math.round(cx - axr * s),
+            Math.round(cy + (o.dy || 6) * s - sp.height * s),
+            Math.round(sp.width * s),
+            Math.round(sp.height * s),
+          );
+        }
+        updateHandshake();
+      }
+
+      // =================================================================
+      // BUILDING HIGHLIGHT: silhouette halo on hover (saffron/white pulse on the
+      // 280ms clock) for the project towers.
+      // =================================================================
+      // Silhouette halo: the sprite smeared 1px in every direction and flooded
+      // flat (saffron on phase 0, white on phase 1 -> it pulses on the 280ms
+      // clock), with the sprite laid back on top. Grows the canvas by 1px on
+      // each side, so the anchor shifts with it.
+      function bakeHalo(base, out) {
+        for (let ph = 0; ph < 2; ph++) {
+          const src = tiles[base + "#" + ph];
+          if (!src) return false;
+          const sil = document.createElement("canvas");
+          sil.width = src.width;
+          sil.height = src.height;
+          const sg = sil.getContext("2d");
+          sg.drawImage(src, 0, 0);
+          sg.globalCompositeOperation = "source-in";
+          sg.fillStyle = ph ? "#FFFFFF" : COL.saff;
+          sg.fillRect(0, 0, sil.width, sil.height);
+          const c = document.createElement("canvas");
+          c.width = src.width + 2;
+          c.height = src.height + 1;
+          const g = c.getContext("2d");
+          g.imageSmoothingEnabled = false;
+          for (const [dx, dy] of [
+            [0, 1],
+            [2, 1],
+            [1, 0],
+            [0, 0],
+            [2, 0],
+          ])
+            g.drawImage(sil, dx, dy);
+          g.drawImage(src, 1, 1);
+          tiles[out + "#" + ph] = c;
+        }
+        const a0 = ANCHORX[base];
+        ANCHORX[out] =
+          (a0 !== undefined ? a0 : tiles[base + "#0"].width / 2) + 1;
+        return true;
+      }
+
+      // ---- generic sprite picking: screen rect + per-pixel alpha ----
+      const spriteMasks = {};
+      function objRect(o) {
+        const { s, ox, oy } = VP,
+          sp = tiles[o.s + "#0"];
+        const a0 = ANCHORX[o.s] !== undefined ? ANCHORX[o.s] : sp.width / 2;
+        const ex = (elev[Math.round(o.y)] || [])[Math.round(o.x)] || 0;
+        const cx = ox + (o.x - o.y) * (TW / 2) * s + (TW / 2) * s;
+        const cy =
+          oy + (o.x + o.y) * (TH / 2) * s + (TH / 2) * s - ex * EH * s;
+        return {
+          X: Math.round(cx - a0 * s),
+          Y: Math.round(cy + (o.dy || 6) * s - sp.height * s),
+          w: sp.width,
+          h: sp.height,
+          s,
+        };
+      }
+      function hitObj(o, mx, my) {
+        if (!VP || !tiles[o.s + "#0"]) return false;
+        const r = objRect(o);
+        const lx = Math.floor((mx - r.X) / r.s),
+          ly = Math.floor((my - r.Y) / r.s);
+        if (lx < 0 || ly < 0 || lx >= r.w || ly >= r.h) return false;
+        let m = spriteMasks[o.s];
+        if (!m) {
+          try {
+            m = spriteMasks[o.s] = tiles[o.s + "#0"]
+              .getContext("2d")
+              .getImageData(0, 0, r.w, r.h).data;
+          } catch (e) {
+            return true;
+          } // no pixel access: bbox is good enough
+        }
+        return m[(ly * r.w + lx) * 4 + 3] > 0;
+      }
+      // Towers overlap, so test them front-to-back: the one drawn last (largest
+      // x+y) is the one on top, and it wins the pointer.
+      function pickTower(mx, my) {
+        const ts = projObjs
+          .filter((o) => o.pid !== undefined)
+          .sort((a, b) => b.x + b.y - (a.x + a.y) || b.y - a.y);
+        for (const o of ts) if (hitObj(o, mx, my)) return o;
+        return null;
+      }
+
+      // =================================================================
+      // HANDSHAKE: hover a project tower -> it lights up and a callout card
+      // wires itself to the crown with a leader line. Click -> open that
+      // project on the list page. A tower can also arrive pre-selected via
+      // /city#p<id>, which is the link back from a project card.
+      // =================================================================
+      const $pcc = document.getElementById("pcc"),
+        $pccard = document.getElementById("pccard"),
+        $pccpath = document.getElementById("pccpath"),
+        $pccdot = document.getElementById("pccdot"),
+        $pcctitle = document.getElementById("pcctitle"),
+        $pccstats = document.getElementById("pccstats"),
+        $pccfill = document.getElementById("pccfill"),
+        $pccitems = document.getElementById("pccitems");
+
+      let hoverPid = null, // tower under the pointer
+        pinPid = hashPid(), // tower selected by the incoming #p<id> link
+        cardSig = ""; // what the card currently shows
+
+      function hashPid() {
+        const m = /^#p(\d+)$/.exec(location.hash || "");
+        return m ? +m[1] : null;
+      }
+      function activePid() {
+        return hoverPid !== null ? hoverPid : pinPid;
+      }
+      function towerOf(pid) {
+        return projObjs.find((o) => o.pid === pid);
+      }
+
+      function fillCard(p) {
+        const built = p.items.filter((i) => i.done).length;
+        const total = p.items.length;
+        // Signature: only rebuild the card's DOM when what it says changes.
+        const sig = [p.id, p.title, p.stories, built, total, p.open].join("|");
+        if (sig === cardSig) return;
+        cardSig = sig;
+
+        $pcctitle.textContent = p.title;
+        $pccstats.replaceChildren(
+          ...[
+            ["Height", p.stories + "F"],
+            ["Built", built + " / " + total],
+            ["Open", String(p.open)],
+          ].map(([k, v]) => {
+            const row = document.createElement("div");
+            row.className = "pccrow";
+            const a = document.createElement("span");
+            a.className = "pcck";
+            a.textContent = k;
+            const b = document.createElement("span");
+            b.className = "pccv";
+            b.textContent = v;
+            row.append(a, b);
+            return row;
+          }),
+        );
+        $pccfill.style.width = (total ? (built / total) * 100 : 0) + "%";
+
+        const SHOW = 5;
+        const lis = p.items.slice(0, SHOW).map((i) => {
+          const li = document.createElement("li");
+          if (i.done) li.className = "done";
+          const x = document.createElement("span");
+          x.className = "pcx";
+          x.textContent = i.done ? "✓" : "·";
+          const t = document.createElement("span");
+          t.textContent =
+            i.done || !i.completion
+              ? i.text
+              : i.text + " (" + Math.round(i.completion * 100) + "%)";
+          li.append(x, t);
+          return li;
+        });
+        if (total > SHOW) {
+          const li = document.createElement("li");
+          li.className = "more";
+          li.textContent = "+" + (total - SHOW) + " MORE";
+          lis.push(li);
+        }
+        $pccitems.replaceChildren(...lis);
+      }
+
+      // Re-anchored every frame so the card tracks zoom, resize and growth.
+      function placeCard(o) {
+        const r = objRect(o);
+        const ax = Math.round(r.X + (r.w * r.s) / 2), // crown, horizontal centre
+          ay = Math.round(r.Y + 3 * r.s);
+        const cw = $pccard.offsetWidth,
+          ch = $pccard.offsetHeight;
+        const W = VP.W,
+          H = VP.H,
+          GAP = 38;
+        // Prefer the right of the tower; fall back to the left when it won't fit.
+        const right = ax + GAP + cw <= W - 12;
+        const cx = right
+          ? ax + GAP
+          : Math.max(12, Math.min(ax - GAP - cw, W - cw - 12));
+        const cy = Math.max(12, Math.min(ay - 24, H - ch - 12));
+        $pccard.style.left = cx + "px";
+        $pccard.style.top = cy + "px";
+
+        // Leader line: up the tower's axis, then a right-angle run into the card.
+        const ey = Math.round(cy + 16); // meets the card beside its title
+        const ex = right ? cx : cx + cw;
+        $pccpath.setAttribute(
+          "points",
+          ax + "," + ay + " " + ax + "," + ey + " " + ex + "," + ey,
+        );
+        $pccdot.setAttribute("cx", ax);
+        $pccdot.setAttribute("cy", ay);
+      }
+
+      function updateHandshake() {
+        const pid = activePid();
+        const o = pid === null ? null : towerOf(pid);
+        const p = o ? PROJECTS.find((q) => q.id === pid) : null;
+        if (!o || !p) {
+          // no lot, toggled off, or deleted out from under us
+          $pcc.style.display = "none";
+          cardSig = "";
+          return;
+        }
+        fillCard(p);
+        placeCard(o);
+        $pcc.style.display = "block";
+      }
+
+      if (cv.addEventListener) {
+        cv.addEventListener("mousemove", (e) => {
+          const t = pickTower(e.clientX, e.clientY);
+          const pid = t ? t.pid : null;
+          if (pid !== null && pid !== pinPid) pinPid = null; // hover supersedes the link
+          hoverPid = pid;
+          cv.style.cursor = pid !== null ? "pointer" : "";
+        });
+        cv.addEventListener("mouseleave", () => {
+          hoverPid = null;
+        });
+        cv.addEventListener("click", (e) => {
+          const t = pickTower(e.clientX, e.clientY);
+          if (t) {
+            location.href = "/#p" + t.pid; // hand off to the list page
+            return;
+          }
+          pinPid = null;
+        });
+      }
+      window.addEventListener("hashchange", () => {
+        pinPid = hashPid();
+      });
+
+      window.addEventListener("resize", buildGround);
+      buildGround();
+      requestAnimationFrame(function loop(t) {
+        draw(t);
+        requestAnimationFrame(loop);
+      });
+
+      // Projects are edited on the list page; poll so the city keeps up, and
+      // catch up immediately when this tab comes back to the front.
+      loadProjects();
+      setInterval(loadProjects, 4000);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) loadProjects();
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,2000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project City — Projects</title>
+<style>
+:root {
+  --ink:        #073A3B;
+  --viridian:   #00B7B9;
+  --viridianHi: #25CDCE;
+  --viridianDk: #008C8E;
+  --pewter:     #F0EAD6;
+  --pewterMid:  #D6D0BE;
+  --pewterDk:   #B8B2A6;
+  --cerulean:   #0096E6;
+  --vermillion: #F02D0E;
+  --saffron:    #FFCC0F;
+  --blue:       #0090DC;
+  --asphalt:    #3B3F44;
+  --asphaltHi:  #474B50;
+  --grass:      #27AE7E;
+  --shadow:     rgba(7,58,59,0.35);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0; }
+html, body { min-height: 100%; }
+body {
+  background: var(--cerulean);
+  font: 700 13px/1.5 monospace;
+  letter-spacing: 1px;
+  color: var(--ink);
+  /* right gutter reserves the fixed #pcnav column so it never covers content */
+  padding: 56px 208px 40px 24px;
+}
+#tag {
+  position: fixed; top: 10px; left: 12px;
+  font: 700 11px/1 monospace; letter-spacing: 2px;
+  color: #FFFFFF; text-shadow: 2px 2px 0 var(--ink);
+  user-select: none; pointer-events: none; z-index: 10;
+}
+#status {
+  position: fixed; top: 10px; right: 120px;
+  font: 700 11px/1 monospace; letter-spacing: 2px;
+  color: #FFFFFF; text-shadow: 2px 2px 0 var(--ink);
+  z-index: 10;
+}
+#status .dot {
+  display: inline-block; width: 8px; height: 8px;
+  background: var(--saffron); margin-right: 6px;
+  border: 1px solid var(--ink);
+}
+#status.idle .dot { background: var(--grass); }
+
+button, input, textarea {
+  font: 700 13px/1.4 monospace; letter-spacing: 1px; color: var(--ink);
+  border: 2px solid var(--ink); background: var(--pewter);
+  outline: none;
+}
+button {
+  cursor: pointer; padding: 6px 12px; text-transform: uppercase;
+  box-shadow: 3px 3px 0 var(--shadow); transition: none;
+}
+button:hover { background: var(--saffron); }
+button:active { transform: translate(2px, 2px); box-shadow: none; }
+button.danger:hover { background: var(--vermillion); color: #FFFFFF; text-shadow: 2px 2px 0 var(--ink); }
+button.ghost { background: var(--pewterMid); box-shadow: none; padding: 2px 8px; font-size: 11px; }
+button.ghost:hover { background: var(--saffron); }
+input:focus, textarea:focus { border-color: var(--saffron); }
+
+/* header bar */
+#bar {
+  margin: 0 0 24px;
+  background: var(--asphalt); border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--shadow);
+  padding: 14px 16px;
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+}
+#bar h1 {
+  font: 700 16px/1 monospace; letter-spacing: 2px; text-transform: uppercase;
+  color: #FFFFFF; text-shadow: 2px 2px 0 var(--ink);
+}
+#bar form { display: flex; gap: 8px; margin-left: auto; }
+#newTitle { padding: 6px 10px; width: 260px; }
+
+/* project grid */
+#grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 20px; align-content: start;
+}
+#empty {
+  padding: 32px 16px;
+  background: var(--pewter); border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--shadow);
+  text-transform: uppercase; letter-spacing: 2px; text-align: center;
+}
+
+/* project card */
+.card {
+  background: var(--pewter); border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--shadow); padding: 12px;
+  /* auto-fit stretches tracks to fill the row; without this a lone project
+     would span an entire 4K monitor. */
+  max-width: 760px;
+}
+.card.selected {
+  border-color: var(--saffron);
+  box-shadow: 3px 3px 0 var(--shadow), 0 0 0 3px var(--saffron);
+}
+.card-head {
+  display: flex; align-items: flex-end; gap: 10px;
+  border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 10px;
+}
+.card-title {
+  font-size: 14px; text-transform: uppercase; letter-spacing: 2px;
+  cursor: pointer; flex: 1; word-break: break-word;
+}
+.card-title:hover { background: var(--saffron); }
+.card-head input { flex: 1; padding: 2px 6px; min-width: 0; }
+.tally {
+  font-size: 11px; color: var(--ink); background: var(--pewterMid);
+  border: 2px solid var(--ink); padding: 2px 6px; white-space: nowrap;
+}
+.tally.done { background: var(--grass); color: #FFFFFF; text-shadow: 1px 1px 0 var(--ink); }
+
+/* iso building glyph — height tracks open items */
+.iso { width: 40px; flex: none; align-self: flex-end; position: relative; }
+.iso div { position: absolute; bottom: 0; }
+.iso .roof, .iso .fL, .iso .fR { image-rendering: pixelated; }
+
+/* todo list */
+.items { list-style: none; }
+.item { border: 2px solid var(--ink); background: #FFFFFF; margin-bottom: 8px; }
+.item-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; }
+.item.done .item-text { text-decoration: line-through; color: var(--pewterDk); }
+.item-text { flex: 1; cursor: default; word-break: break-word; }
+.cb {
+  width: 18px; height: 18px; flex: none; cursor: pointer;
+  border: 2px solid var(--ink); background: var(--pewter);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; line-height: 1; color: var(--ink); user-select: none;
+}
+.item.done .cb { background: var(--saffron); }
+.notes-toggle {
+  width: 22px; height: 18px; flex: none; padding: 0;
+  font-size: 10px; box-shadow: none; background: var(--pewterMid);
+}
+.notes-toggle.open { background: var(--viridian); color: #FFFFFF; text-shadow: 1px 1px 0 var(--ink); }
+.item-notes { border-top: 2px solid var(--ink); background: var(--pewter); padding: 8px; }
+.item-notes[hidden] { display: none; }
+.item-notes textarea {
+  width: 100%; min-height: 64px; resize: vertical; padding: 6px 8px;
+  background: #FFFFFF; display: block;
+}
+.item-notes .notes-foot { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+.notes-saved { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--viridianDk); }
+
+/* schedule block — turns a todo into a time-sensitive goal. These four fields
+   (created / start / target / predecessor) are the Gantt tuple; the chart is a
+   view over them, so editing here is editing the future chart. */
+.sched {
+  border: 2px solid var(--ink); background: #FFFFFF;
+  padding: 8px; margin-bottom: 8px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.sched-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sched-k {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 2px;
+  color: var(--viridianDk);
+}
+.sched-v { font-size: 11px; letter-spacing: 1px; }
+.sched-v.none { color: var(--pewterDk); }
+.sched-row label { display: flex; align-items: center; gap: 6px; }
+.sched input[type=date], .sched select {
+  font: 700 11px/1.4 monospace; letter-spacing: 1px; color: var(--ink);
+  border: 2px solid var(--ink); background: var(--pewter);
+  padding: 2px 4px; outline: none; cursor: pointer;
+}
+.sched input[type=date]:focus, .sched select:focus { border-color: var(--saffron); }
+.sched .spacer { margin-left: auto; }
+/* goal status — the one place a deadline is allowed to shout */
+.chip {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 2px;
+  border: 2px solid var(--ink); padding: 2px 6px; white-space: nowrap;
+  background: var(--pewterMid); color: var(--ink);
+}
+.chip.ok      { background: var(--viridian); color: #FFFFFF; text-shadow: 1px 1px 0 var(--ink); }
+.chip.soon    { background: var(--saffron); }
+.chip.overdue { background: var(--vermillion); color: #FFFFFF; text-shadow: 1px 1px 0 var(--ink); }
+.chip.done    { background: var(--grass); color: #FFFFFF; text-shadow: 1px 1px 0 var(--ink); }
+.chip.err     { background: var(--vermillion); color: #FFFFFF; text-shadow: 1px 1px 0 var(--ink); }
+/* an overdue item is worth seeing without opening the dropdown */
+.item.late { border-color: var(--vermillion); box-shadow: inset 3px 0 0 var(--vermillion); }
+
+/* completion 0.00 - 1.00; an item only becomes a story at 1.0 */
+.pct { display: flex; align-items: center; gap: 6px; flex: none; }
+.pct input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 72px; height: 10px; padding: 0; flex: none; cursor: pointer;
+  background: var(--pewterMid); border: 2px solid var(--ink);
+}
+.pct input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 8px; height: 12px; background: var(--viridian);
+  border: 2px solid var(--ink); cursor: pointer;
+}
+.pct input[type=range]::-moz-range-thumb {
+  width: 8px; height: 12px; background: var(--viridian);
+  border: 2px solid var(--ink); border-radius: 0; cursor: pointer;
+}
+.item.done .pct input[type=range]::-webkit-slider-thumb { background: var(--saffron); }
+.item.done .pct input[type=range]::-moz-range-thumb { background: var(--saffron); }
+.pct .pctv { font-size: 10px; width: 30px; text-align: right; color: var(--viridianDk); }
+.item.done .pct .pctv { color: var(--ink); }
+
+.add-item { display: flex; gap: 8px; margin-top: 4px; }
+.add-item input { flex: 1; padding: 4px 8px; min-width: 0; }
+.card-foot { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 10px; }
+
+/* logo: its own row — the card-foot is a single-line flex-end row and is full */
+.logo-ctl {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-top: 10px; padding-top: 10px; border-top: 2px dashed var(--pewterDk);
+}
+.logo-cap {
+  font: 700 10px/1 monospace; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--viridianDk); margin-right: 2px;
+}
+.logo-prev {
+  width: 40px; height: 40px; flex: none; image-rendering: pixelated;
+  border: 2px solid var(--ink); background: var(--pewterMid);
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+.logo-prev.bad { border-color: var(--vermillion); }
+.logo-ctl input[type="range"] { width: 74px; padding: 0; accent-color: var(--viridian); }
+.logo-lab {
+  font: 700 10px/1 monospace; letter-spacing: 1px; color: var(--viridianDk);
+  min-width: 30px;
+}
+.logo-err { font: 700 10px/1.3 monospace; color: var(--vermillion); max-width: 200px; }
+a.city-link {
+  font: 700 11px/1.4 monospace; letter-spacing: 1px; text-transform: uppercase;
+  text-decoration: none; color: var(--ink); background: var(--pewterMid);
+  border: 2px solid var(--ink); padding: 2px 8px; white-space: nowrap;
+}
+a.city-link:hover { background: var(--saffron); }
+.city-tog { margin-right: auto; }
+.card.selected { scroll-margin: 24px; }
+.city-tog.on { background: var(--saffron); }
+.city-tog.off { background: var(--pewterMid); color: var(--pewterDk); }
+.stories { font-size: 11px; background: var(--viridian); color: #FFFFFF;
+  text-shadow: 1px 1px 0 var(--ink); border: 2px solid var(--ink);
+  padding: 2px 6px; white-space: nowrap; }
+.del-x { width: 22px; height: 18px; flex: none; padding: 0; font-size: 10px; box-shadow: none; background: var(--pewterMid); }
+.del-x:hover { background: var(--vermillion); color: #FFFFFF; }
+/* The card's primary action: own full-width bar, not a chip in the foot row. */
+.expand {
+  display: block; width: 100%; margin-top: 10px; padding: 9px 10px;
+  font: 700 14px/1 monospace; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--ink); background: var(--saffron);
+  border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
+  cursor: pointer; text-align: center;
+}
+.expand:hover { background: var(--viridian); color: #FFFFFF; text-shadow: 1px 1px 0 var(--ink); }
+.expand:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
+
+/* =================================================================
+   FULL-SCREEN PROJECT MODAL — one project, every detail. Sits above
+   #pcnav (z-index 50) so while open it genuinely owns the screen.
+   Contents are rebuilt by renderModal() on every mutation, exactly
+   like the cards, so the two can never disagree.
+   ================================================================= */
+#modal { position: fixed; inset: 0; z-index: 100; display: flex; background: rgba(7,58,59,0.86); }
+#modal[hidden] { display: none; }
+.modal-panel {
+  flex: 1; min-width: 0; display: flex; flex-direction: column;
+  background: var(--cerulean); border: 4px solid var(--ink);
+}
+.modal-head {
+  display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; padding: 14px 16px;
+  background: var(--asphalt); border-bottom: 4px solid var(--ink);
+}
+.modal-titlewrap { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
+.modal-title {
+  font: 700 22px/1.15 monospace; letter-spacing: 3px; text-transform: uppercase;
+  color: #FFFFFF; text-shadow: 3px 3px 0 var(--ink);
+  cursor: pointer; word-break: break-word; align-self: flex-start;
+}
+.modal-title:hover { background: var(--saffron); color: var(--ink); text-shadow: none; }
+.modal-titlewrap input { padding: 4px 8px; font-size: 18px; width: 100%; }
+.modal-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.modal-close { background: var(--pewter); }
+.modal-close:hover { background: var(--vermillion); color: #FFFFFF; text-shadow: 2px 2px 0 var(--ink); }
+
+.modal-body {
+  flex: 1; min-height: 0;
+  display: grid; grid-template-columns: 340px 1fr; gap: 20px; padding: 20px;
+}
+.modal-side { display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+.modal-main {
+  min-height: 0; display: flex; flex-direction: column;
+  background: var(--pewter); border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--shadow); padding: 12px;
+}
+/* the item list scrolls; the add-item form stays pinned to the bottom */
+.modal-items { flex: 1; min-height: 0; overflow: auto; list-style: none; padding-right: 4px; }
+.modal-main .add-item { margin-top: 10px; }
+.modal-empty {
+  padding: 24px 12px; text-align: center; text-transform: uppercase; letter-spacing: 2px;
+  color: var(--pewterDk); border: 2px dashed var(--pewterDk);
+}
+
+.panel { background: var(--pewter); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--shadow); padding: 12px; }
+.panel h3, .modal-main h3 {
+  font: 700 11px/1 monospace; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--viridianDk); margin-bottom: 10px;
+}
+.stat {
+  display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
+  padding: 5px 0; border-bottom: 2px solid var(--pewterMid);
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+}
+.stat:last-child { border-bottom: none; }
+.stat span { color: var(--viridianDk); }
+.stat b { font-size: 12px; text-align: right; }
+.stat.warn b { color: var(--vermillion); }
+.stat.good b { color: var(--grass); }
+.bar { height: 16px; border: 2px solid var(--ink); background: #FFFFFF; margin-bottom: 10px; }
+.bar i { display: block; height: 100%; background: var(--viridian); }
+.bar i.full { background: var(--saffron); }
+.modal-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.modal-actions button, .modal-actions a.city-link { text-align: center; padding: 6px 10px; font-size: 11px; }
+/* the card footer pushes the city toggle left with margin-right:auto; in this
+   column that would collapse it to its text width instead of filling the rail */
+.modal-actions .city-tog { margin-right: 0; }
+
+/* every note written on an item, gathered in the rail — a project's notes are
+   otherwise buried one dropdown at a time. Clicking one opens it in the list. */
+.notebook { display: flex; flex-direction: column; gap: 8px; }
+.note-lite {
+  border: 2px solid var(--ink); background: #FFFFFF; padding: 6px 8px; cursor: pointer;
+}
+.note-lite:hover { background: var(--saffron); }
+.note-lite b {
+  display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  word-break: break-word;
+}
+.note-lite.done b { text-decoration: line-through; color: var(--pewterDk); }
+.note-lite span {
+  display: block; margin-top: 4px; font-weight: 400; font-size: 11px;
+  color: var(--asphalt); white-space: pre-wrap; word-break: break-word;
+}
+
+@media (max-width: 900px) {
+  /* One column: the whole body scrolls as a single page. align-content:start lets
+     the rows take their natural height — without it the grid squeezes them to fit
+     and the rail becomes a nested scroller that hides the panels below Progress. */
+  .modal-body { grid-template-columns: 1fr; overflow: auto; align-content: start; }
+  .modal-side { overflow: visible; }
+  .modal-main { min-height: 60vh; }
+}
+
+/* =================================================================
+   TAGS — a per-project vocabulary. The project owns the tag bodies
+   (name + color); an item only holds ids, so a rename or a recolor
+   moves through every chip at once and can never leave a stale copy.
+   ================================================================= */
+.tagbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  border-bottom: 2px solid var(--pewterMid); padding-bottom: 10px; margin-bottom: 10px;
+}
+.tagbar-k {
+  font: 700 10px/1 monospace; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--viridianDk); margin-right: 2px;
+}
+.tagbar .none { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--pewterDk); }
+.tg {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 700 10px/1 monospace; letter-spacing: 2px; text-transform: uppercase;
+  border: 2px solid var(--ink); padding: 3px 5px; white-space: nowrap;
+}
+.tg .tg-n { opacity: 0.72; font-size: 9px; }
+.tg-b {
+  border: none; background: transparent; box-shadow: none;
+  font: 700 10px/1 monospace; padding: 0 1px; color: inherit; cursor: pointer;
+}
+.tg-b:hover { background: transparent; color: #FFFFFF; text-shadow: 1px 1px 0 var(--ink); }
+/* the tag manager's own chips are buttons: click to apply/unapply on nothing,
+   the pencil edits, the x deletes the tag from the project entirely */
+.tg-del:hover { text-shadow: 1px 1px 0 var(--vermillion); }
+.tag-form { display: flex; align-items: center; gap: 5px; }
+.tag-form input[type=text] { padding: 2px 6px; width: 118px; font-size: 11px; }
+.tag-form input[type=color] {
+  width: 26px; height: 22px; padding: 0; flex: none; cursor: pointer;
+  border: 2px solid var(--ink); background: var(--pewter);
+}
+
+/* per-item chips + the picker that applies them */
+.itemtags {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+  padding: 0 8px 6px 34px;
+}
+.itemtags .none { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--pewterDk); }
+.tag-add { height: 18px; padding: 0 6px; font-size: 10px; box-shadow: none; background: var(--pewterMid); }
+.tag-add.open { background: var(--viridian); color: #FFFFFF; text-shadow: 1px 1px 0 var(--ink); }
+.tagpick {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+  border: 2px dashed var(--pewterDk); background: var(--pewter);
+  padding: 6px; margin: 0 8px 8px 34px;
+}
+.tagpick .tg { cursor: pointer; opacity: 0.45; }
+.tagpick .tg.on { opacity: 1; box-shadow: 2px 2px 0 var(--shadow); }
+.tagpick .tg:hover { opacity: 1; }
+.tagpick .none { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--pewterDk); }
+
+/* ---- modal tabs + gantt -------------------------------------------------
+   The chart is a *view of the items*, not a second store: it reads the same
+   `projects` array the item list does, so editing a date under ITEMS moves the
+   bar under GANTT on the very next render — no fetch, nothing to keep in sync. */
+.modal-tabs { display: flex; gap: 0; margin-bottom: 10px; border-bottom: 3px solid var(--ink); }
+.modal-tabs button {
+  font: inherit; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  padding: 7px 16px; cursor: pointer; color: var(--ink);
+  border: 3px solid var(--ink); border-bottom: none; margin-right: 4px;
+  background: var(--pewterMid);
+}
+.modal-tabs button.on { background: var(--saffron); box-shadow: inset 0 -4px 0 var(--vermillion); }
+.modal-tabs button:not(.on):hover { background: var(--pewter); }
+.modal-tabs .count { opacity: 0.6; margin-left: 6px; }
+
+.gantt-scroll { flex: 1; min-height: 0; overflow: auto; }
+.gantt { min-width: 520px; }
+/* rows and axis share one grid, so the ticks stay glued to the bars at any width */
+.gantt-row, .gantt-axis { display: grid; grid-template-columns: 190px 1fr; align-items: center; }
+.gantt-axis { height: 24px; border-bottom: 2px solid var(--pewterDk); margin-bottom: 6px; }
+.gantt-ticks { position: relative; height: 100%; }
+.gantt-tick {
+  position: absolute; top: 7px; transform: translateX(-50%);
+  font-size: 9px; letter-spacing: 1px; color: var(--ink); opacity: 0.65; white-space: nowrap;
+}
+.gantt-tick::before {
+  content: ''; position: absolute; left: 50%; bottom: -7px; width: 2px; height: 5px;
+  background: var(--pewterDk);
+}
+.gantt-rows { position: relative; }
+.gantt-row { height: 26px; }
+.gantt-row:hover .gantt-label { color: var(--vermillion); }
+.gantt-label {
+  font-size: 11px; padding-right: 10px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; cursor: pointer;
+}
+.gantt-row.done .gantt-label { opacity: 0.5; text-decoration: line-through; }
+.gantt-track { position: relative; height: 26px; }
+.gantt-track::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 0;
+  border-top: 2px dotted var(--pewterMid);
+}
+.gantt-bar {
+  position: absolute; top: 4px; height: 18px; box-sizing: border-box;
+  border: 2px solid var(--ink); background: var(--pewterMid);
+  min-width: 6px; cursor: pointer; overflow: hidden;
+}
+.gantt-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--cerulean); display: block; }
+.gantt-bar.done i { background: var(--grass); }
+.gantt-bar.overdue { border-color: var(--vermillion); }
+.gantt-bar.overdue i { background: var(--vermillion); }
+.gantt-bar:hover { box-shadow: 2px 2px 0 var(--shadow); }
+/* a lone date is a point in time, not a span — draw it as a milestone */
+.gantt-mile {
+  position: absolute; top: 7px; width: 12px; height: 12px; margin-left: -6px;
+  background: var(--saffron); border: 2px solid var(--ink); transform: rotate(45deg);
+  box-sizing: border-box; cursor: pointer;
+}
+.gantt-mile.overdue { background: var(--vermillion); }
+.gantt-now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--vermillion); z-index: 2; }
+.gantt-nowcap {
+  position: absolute; transform: translateX(-50%); font-size: 9px; letter-spacing: 1px;
+  color: var(--vermillion); white-space: nowrap; top: 7px;
+}
+/* finish-to-start dependency arrows, drawn over the rows */
+.gantt-links { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.gantt-links s { position: absolute; background: var(--ink); text-decoration: none; }
+.gantt-links s.bad { background: var(--vermillion); }
+.gantt-links u {
+  position: absolute; width: 0; height: 0; text-decoration: none;
+  border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+  border-left: 5px solid var(--ink);
+}
+.gantt-links u.bad { border-left-color: var(--vermillion); }
+.gantt-unsched { margin-top: 12px; border-top: 2px dashed var(--pewterDk); padding-top: 8px; }
+.gantt-unsched h4 {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--ink); opacity: 0.7; margin: 0 0 4px;
+}
+.gantt-unsched .u-row {
+  display: flex; align-items: center; gap: 8px; font-size: 11px;
+  padding: 3px 0; color: var(--ink); opacity: 0.75; cursor: pointer;
+}
+.gantt-unsched .u-row:hover { opacity: 1; color: var(--vermillion); }
+.gantt-legend {
+  display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; padding-top: 8px;
+  border-top: 2px solid var(--pewterMid);
+  font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink); opacity: 0.7;
+}
+.gantt-legend span { display: flex; align-items: center; gap: 4px; }
+.gantt-legend i { width: 12px; height: 8px; border: 2px solid var(--ink); display: block; }
+</style>
+</head>
+<body>
+<div id="tag">PROJECT CITY — PROJECTS v1.1</div>
+{{ nav|safe }}
+<div id="status" class="idle"><span class="dot"></span><span id="statusText">IDLE</span></div>
+
+<div id="bar">
+  <h1>Projects</h1>
+  <form id="newForm">
+    <input id="newTitle" maxlength="80" placeholder="NEW PROJECT TITLE" autocomplete="off">
+    <button type="submit">+ Build</button>
+  </form>
+</div>
+
+<div id="grid"></div>
+<div id="empty" hidden>NO PROJECTS — LAND IS ZONED. BUILD ONE ABOVE.</div>
+<div id="modal" hidden role="dialog" aria-modal="true" aria-label="Project detail"></div>
+
+<script>
+'use strict';
+// =================================================================
+// helpers — same conventions as the game file
+// =================================================================
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.round((n >> 16 & 255) * f));
+  const g = Math.min(255, Math.round((n >> 8 & 255) * f));
+  const b = Math.min(255, Math.round((n & 255) * f));
+  return `rgb(${r},${g},${b})`;
+}
+const BODY_POOL = ['#CE6B47', '#00B7B9', '#0090DC', '#27AE7E', '#B8B2A6', '#FFCC0F'];
+
+// =================================================================
+// calendar — whole days, no clock. Age and time-left are recomputed here rather
+// than trusted from the payload, so a tab left open overnight rolls over on its
+// own instead of showing yesterday's numbers until the next save.
+// =================================================================
+const DAY_MS = 86400000;
+const dayIdx = s => {
+  const [y, m, d] = s.slice(0, 10).split('-').map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / DAY_MS);
+};
+const todayIdx = () => {
+  const n = new Date();
+  return Math.round(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) / DAY_MS);
+};
+const plural = (n, w) => n + ' ' + w + (Math.abs(n) === 1 ? '' : 'S');
+const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function stamp(iso) {
+  // '2026-07-12T01:39:00Z' -> '12 JUL 2026, 01:39' in the reader's own timezone
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${hh}:${mm}`;
+}
+// The one summary that matters: is this goal in trouble?
+function goalStatus(item) {
+  if (item.done) return { cls: 'done', text: 'Complete' };
+  if (!item.due_at) return { cls: '', text: 'No target' };
+  const left = dayIdx(item.due_at) - todayIdx();
+  if (left < 0) return { cls: 'overdue', text: 'Overdue by ' + plural(-left, 'DAY') };
+  if (left === 0) return { cls: 'soon', text: 'Due today' };
+  if (left <= 3) return { cls: 'soon', text: 'Due in ' + plural(left, 'DAY') };
+  return { cls: 'ok', text: plural(left, 'DAY') + ' left' };
+}
+
+const $status = document.getElementById('status');
+const $statusText = document.getElementById('statusText');
+let inflight = 0;
+function busy(on) {
+  inflight += on ? 1 : -1;
+  const idle = inflight <= 0;
+  $status.classList.toggle('idle', idle);
+  $statusText.textContent = idle ? 'IDLE' : 'SAVING';
+}
+async function api(method, url, body) {
+  busy(true);
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok && res.status !== 204) throw new Error(method + ' ' + url + ' -> ' + res.status);
+    return res.status === 204 ? null : res.json();
+  } finally {
+    busy(false);
+  }
+}
+
+// =================================================================
+// render
+// =================================================================
+const $grid = document.getElementById('grid');
+const $empty = document.getElementById('empty');
+const $modal = document.getElementById('modal');
+let openNotes = new Set();   // item ids with notes panel open
+let selectedCard = null;     // project id with pulse
+let modalPid = null;         // project id blown up full screen, or null
+let modalOpening = false;    // fresh open — move focus into the dialog once
+let modalTab = 'items';      // 'items' | 'gantt' — must survive the rebuild on every mutation
+
+// Every mutation re-renders the whole grid, which destroys focus. Park a project
+// id here to send the caret back into that card's item box once the DOM is rebuilt,
+// so Enter can be held down to type item after item.
+let focusAddId = null;
+// key -> add-item input, rebuilt each render. A project's card keys on its id;
+// the same project's modal keys on 'm<id>', so the two boxes never collide.
+const addInputs = new Map();
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+};
+
+function isoGlyph(project, k = 1) {
+  // 2:1 iso box, integer vertices, clip-path faces. Mirrors the city tower:
+  // height = stories = 1 + completed items. k scales the whole glyph (the modal
+  // draws the same building bigger) — every vertex stays on a whole pixel.
+  const stories = project.stories;
+  const seedRand = mulberry32(project.id * 2654435761 >>> 0);
+  const body = BODY_POOL[Math.floor(seedRand() * BODY_POOL.length)];
+  const W = 40 * k, half = W / 2, ry = 10 * k;       // roof diamond 40x20 at k=1
+  const h = Math.min(60, 8 + stories * 6) * k;       // wall height px
+  const total = h + ry * 2;
+  const el = document.createElement('div');
+  el.className = 'iso';
+  el.style.width = W + 'px';
+  el.style.height = total + 'px';
+  el.title = stories + ' stor' + (stories === 1 ? 'y' : 'ies');
+  const roof = document.createElement('div');
+  roof.className = 'roof';
+  roof.style.cssText = `width:${W}px;height:${ry * 2}px;bottom:${h}px;background:${body};` +
+    `clip-path:polygon(${half}px 0,${W}px ${ry}px,${half}px ${ry * 2}px,0 ${ry}px);`;
+  const fL = document.createElement('div');
+  fL.className = 'fL';
+  fL.style.cssText = `width:${half}px;height:${h + ry}px;left:0;background:${shade(body, 0.8)};` +
+    `clip-path:polygon(0 0,${half}px ${ry}px,${half}px ${h + ry}px,0 ${h}px);`;
+  const fR = document.createElement('div');
+  fR.className = 'fR';
+  fR.style.cssText = `width:${half}px;height:${h + ry}px;left:${half}px;background:${shade(body, 0.72)};` +
+    `clip-path:polygon(${half}px 0,${half}px ${h}px,0 ${h + ry}px,0 ${ry}px);`;
+  el.append(fL, fR, roof);
+  return el;
+}
+
+// =================================================================
+// tags — the vocabulary belongs to the project, the items only point at it.
+// Everything here is a thin skin over the API: create/rename/recolor/delete a
+// tag, and apply/remove/change the tags on an item. Every write re-loads, so the
+// manager's chips and an item's chips are the same tag object and cannot drift.
+// =================================================================
+let openPicker = null;              // item id whose tag picker is open
+let editTag = null;                 // tag id being renamed/recolored
+const tagDrafts = new Map();        // project id -> half-typed new tag, kept across renders
+
+function tagInk(hex) {
+  // Ink that survives whatever color was picked: dark chip -> white text.
+  const n = parseInt(String(hex || '#00B7B9').slice(1), 16);
+  const l = (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255;
+  return l > 0.6 ? '#073A3B' : '#FFFFFF';
+}
+function tagChip(tag, extra) {
+  const el = document.createElement('span');
+  el.className = 'tg' + (extra ? ' ' + extra : '');
+  el.style.background = tag.color;
+  el.style.color = tagInk(tag.color);
+  const n = document.createElement('span');
+  n.textContent = tag.name;
+  el.append(n);
+  return el;
+}
+function tagBtn(label, title, fn) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'tg-b';
+  b.textContent = label;
+  b.title = title;
+  b.onclick = e => { e.stopPropagation(); fn(); };
+  return b;
+}
+
+// Rename + recolor in place. The server refuses a duplicate name (per project,
+// case-insensitive); a refusal reddens the field instead of losing the edit.
+function tagEditor(tag) {
+  const form = document.createElement('form');
+  form.className = 'tag-form';
+  const name = document.createElement('input');
+  name.type = 'text';
+  name.value = tag.name;
+  name.maxLength = 24;
+  const color = document.createElement('input');
+  color.type = 'color';
+  color.value = tag.color;
+  const ok = document.createElement('button');
+  ok.type = 'submit';
+  ok.className = 'ghost';
+  ok.textContent = 'Save';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'ghost';
+  cancel.textContent = 'Esc';
+  cancel.onclick = () => { editTag = null; render(); };
+  name.onkeydown = e => { if (e.key === 'Escape') { editTag = null; render(); } };
+  name.oninput = () => { name.style.borderColor = ''; };
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const v = name.value.trim();
+    if (!v) { name.focus(); return; }
+    try {
+      await api('PATCH', '/api/tags/' + tag.id, { name: v, color: color.value });
+    } catch (err) {
+      name.style.borderColor = 'var(--vermillion)';
+      name.title = 'REJECTED — this project already has a tag by that name';
+      return;
+    }
+    editTag = null;
+    load();
+  };
+  form.append(name, color, ok, cancel);
+  setTimeout(() => { name.focus(); name.select(); }, 0);
+  return form;
+}
+
+// The project's whole tag vocabulary: view it, create, rename, recolor, delete.
+function renderTagBar(project) {
+  const bar = document.createElement('div');
+  bar.className = 'tagbar';
+  const k = document.createElement('span');
+  k.className = 'tagbar-k';
+  k.textContent = 'Tags';
+  bar.append(k);
+
+  if (!project.tags.length) {
+    const none = document.createElement('span');
+    none.className = 'none';
+    none.textContent = 'None yet';
+    bar.append(none);
+  }
+  project.tags.forEach(t => {
+    if (editTag === t.id) { bar.append(tagEditor(t)); return; }
+    const chip = tagChip(t);
+    if (t.items) {
+      const n = document.createElement('span');
+      n.className = 'tg-n';
+      n.textContent = '×' + t.items;
+      n.title = t.items + ' item' + (t.items === 1 ? '' : 's') + ' wear this tag';
+      chip.append(n);
+    }
+    chip.append(tagBtn('✎', 'Rename or recolor this tag', () => { editTag = t.id; render(); }));
+    const del = tagBtn('✕', 'Delete this tag from the project', async () => {
+      // Deleting a tag unapplies it from every item; the items themselves survive.
+      if (t.items && !confirm('Delete "' + t.name + '"? It comes off ' + t.items
+        + ' item' + (t.items === 1 ? '' : 's') + '. The items stay.')) return;
+      if (editTag === t.id) editTag = null;
+      await api('DELETE', '/api/tags/' + t.id);
+      load();
+    });
+    del.classList.add('tg-del');
+    chip.append(del);
+    bar.append(chip);
+  });
+
+  const draft = tagDrafts.get(project.id) || { name: '', color: '#00B7B9' };
+  const form = document.createElement('form');
+  form.className = 'tag-form';
+  const name = document.createElement('input');
+  name.type = 'text';
+  name.placeholder = 'NEW TAG';
+  name.maxLength = 24;
+  name.autocomplete = 'off';
+  name.value = draft.name;
+  const color = document.createElement('input');
+  color.type = 'color';
+  color.value = draft.color;
+  const add = document.createElement('button');
+  add.type = 'submit';
+  add.className = 'ghost';
+  add.textContent = '+ Tag';
+  const keep = () => tagDrafts.set(project.id, { name: name.value, color: color.value });
+  name.oninput = () => { name.style.borderColor = ''; keep(); };
+  color.oninput = keep;
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const v = name.value.trim();
+    if (!v) { name.focus(); return; }
+    try {
+      await api('POST', '/api/projects/' + project.id + '/tags', { name: v, color: color.value });
+    } catch (err) {
+      name.style.borderColor = 'var(--vermillion)';
+      name.title = 'REJECTED — this project already has a tag by that name';
+      return;
+    }
+    tagDrafts.delete(project.id);
+    load();
+  };
+  form.append(name, color, add);
+  bar.append(form);
+  return bar;
+}
+
+// The chips an item wears, plus the picker that applies, removes and changes them.
+function itemTagNodes(project, item) {
+  const applied = new Set(item.tags || []);
+  const byId = new Map(project.tags.map(t => [t.id, t]));
+  const out = [];
+
+  const strip = document.createElement('div');
+  strip.className = 'itemtags';
+  if (!applied.size) {
+    const none = document.createElement('span');
+    none.className = 'none';
+    none.textContent = 'Untagged';
+    strip.append(none);
+  }
+  [...applied].map(id => byId.get(id)).filter(Boolean).forEach(t => {
+    const chip = tagChip(t);
+    const x = tagBtn('✕', 'Take this tag off the item', async () => {
+      await api('DELETE', '/api/items/' + item.id + '/tags/' + t.id);
+      load();
+    });
+    x.classList.add('tg-del');
+    chip.append(x);
+    strip.append(chip);
+  });
+  const open = openPicker === item.id;
+  const add = document.createElement('button');
+  add.className = 'ghost tag-add' + (open ? ' open' : '');
+  add.textContent = open ? 'Done' : '+ Tag';
+  add.title = "Apply or remove this project's tags on this item";
+  add.onclick = () => { openPicker = open ? null : item.id; render(); };
+  strip.append(add);
+  out.push(strip);
+  if (!open) return out;
+
+  const pick = document.createElement('div');
+  pick.className = 'tagpick';
+  if (!project.tags.length) {
+    const none = document.createElement('span');
+    none.className = 'none';
+    none.textContent = 'No tags in this project yet — make one in the tag bar above';
+    pick.append(none);
+  }
+  project.tags.forEach(t => {
+    const on = applied.has(t.id);
+    const chip = tagChip(t, on ? 'on' : '');
+    chip.title = on ? 'Click to remove' : 'Click to apply';
+    chip.onclick = async () => {
+      // Apply is a POST, remove a DELETE — both idempotent server-side, so an
+      // impatient double-click cannot fail.
+      if (on) await api('DELETE', '/api/items/' + item.id + '/tags/' + t.id);
+      else await api('POST', '/api/items/' + item.id + '/tags', { tag_id: t.id });
+      load();
+    };
+    pick.append(chip);
+  });
+  if (applied.size) {
+    const clear = document.createElement('button');
+    clear.className = 'ghost';
+    clear.textContent = 'Clear';
+    clear.title = 'Take every tag off this item';
+    clear.onclick = async () => {
+      await api('PUT', '/api/items/' + item.id + '/tags', { tags: [] });
+      load();
+    };
+    pick.append(clear);
+  }
+  out.push(pick);
+  return out;
+}
+
+function renderItem(project, item) {
+  const li = document.createElement('li');
+  li.className = 'item' + (item.done ? ' done' : '') + (item.overdue ? ' late' : '');
+
+  const row = document.createElement('div');
+  row.className = 'item-row';
+
+  const cb = document.createElement('div');
+  cb.className = 'cb';
+  cb.textContent = item.done ? 'X' : '';
+  cb.onclick = async () => {
+    await api('PATCH', '/api/items/' + item.id, { done: !item.done });
+    load();
+  };
+
+  const text = document.createElement('span');
+  text.className = 'item-text';
+  text.textContent = item.text;
+
+  // completion float: drag toward 1.00. Only 1.00 adds a story to the tower.
+  const pct = document.createElement('label');
+  pct.className = 'pct';
+  const range = document.createElement('input');
+  range.type = 'range';
+  range.min = '0'; range.max = '100'; range.step = '5';
+  range.value = String(Math.round(item.completion * 100));
+  range.title = 'Completion — a story is built at 100%';
+  const pctv = document.createElement('span');
+  pctv.className = 'pctv';
+  pctv.textContent = range.value + '%';
+  range.oninput = () => { pctv.textContent = range.value + '%'; };
+  range.onchange = async () => {
+    await api('PATCH', '/api/items/' + item.id, { completion: Number(range.value) / 100 });
+    load();
+  };
+  pct.append(range, pctv);
+
+  const toggle = document.createElement('button');
+  toggle.className = 'notes-toggle' + (openNotes.has(item.id) ? ' open' : '');
+  toggle.textContent = openNotes.has(item.id) ? '▲' : '▼';
+  toggle.onclick = () => {
+    openNotes.has(item.id) ? openNotes.delete(item.id) : openNotes.add(item.id);
+    render();
+  };
+
+  const del = document.createElement('button');
+  del.className = 'del-x';
+  del.textContent = 'DEL';
+  del.onclick = async () => {
+    await api('DELETE', '/api/items/' + item.id);
+    openNotes.delete(item.id);
+    load();
+  };
+
+  row.append(cb, text, pct, toggle, del);
+  li.append(row);
+  // the tags this item wears, and the picker that changes them
+  li.append(...itemTagNodes(project, item));
+
+  const notes = document.createElement('div');
+  notes.className = 'item-notes';
+  notes.hidden = !openNotes.has(item.id);
+
+  // ---- schedule: created / age / start / target / predecessor ----
+  const sched = document.createElement('div');
+  sched.className = 'sched';
+
+  const factRow = document.createElement('div');
+  factRow.className = 'sched-row';
+  const ck = document.createElement('span');
+  ck.className = 'sched-k';
+  ck.textContent = 'Created';
+  const cv = document.createElement('span');
+  cv.className = 'sched-v' + (item.created_at ? '' : ' none');
+  // Items made before scheduling existed have no honest creation date, and one
+  // is not invented for them.
+  cv.textContent = item.created_at ? (stamp(item.created_at) || item.created_at) : 'NOT RECORDED';
+
+  const ak = document.createElement('span');
+  ak.className = 'sched-k spacer';
+  ak.textContent = 'Age';
+  const av = document.createElement('span');
+  av.className = 'sched-v' + (item.created_at ? '' : ' none');
+  if (item.created_at) {
+    const age = Math.max(0, todayIdx() - dayIdx(item.created_at));
+    av.textContent = age === 0 ? 'TODAY' : plural(age, 'DAY') + ' OLD';
+  } else {
+    av.textContent = '—';
+  }
+  factRow.append(ck, cv, ak, av);
+
+  const status = document.createElement('span');
+  const st = goalStatus(item);
+  status.className = 'chip ' + st.cls;
+  status.textContent = st.text;
+
+  // A rejected date (target before start, or a dependency cycle) is reported in
+  // the chip and the field is put back — the server is the referee, not the UI.
+  const dateField = (label, key, value) => {
+    const wrap = document.createElement('label');
+    const k = document.createElement('span');
+    k.className = 'sched-k';
+    k.textContent = label;
+    const inp = document.createElement('input');
+    inp.type = 'date';
+    inp.value = value || '';
+    inp.onchange = async () => {
+      try {
+        await api('PATCH', '/api/items/' + item.id, { [key]: inp.value || null });
+      } catch (err) {
+        inp.value = value || '';
+        status.className = 'chip err';
+        status.textContent = 'Rejected — check dates';
+        return;
+      }
+      load();
+    };
+    wrap.append(k, inp);
+    return wrap;
+  };
+
+  const dateRow = document.createElement('div');
+  dateRow.className = 'sched-row';
+  dateRow.append(
+    dateField('Start', 'start_at', item.start_at),
+    dateField('Target', 'due_at', item.due_at),
+  );
+  const clear = document.createElement('button');
+  clear.className = 'ghost';
+  clear.textContent = 'Clear';
+  clear.title = 'Unschedule — back to an open-ended todo';
+  clear.onclick = async () => {
+    await api('PATCH', '/api/items/' + item.id, { start_at: null, due_at: null });
+    load();
+  };
+  const clearWrap = document.createElement('span');
+  clearWrap.className = 'spacer';
+  clearWrap.append(status);
+  dateRow.append(clear, clearWrap);
+
+  // Predecessor — the finish-to-start arrow a Gantt chart draws between bars.
+  const depRow = document.createElement('div');
+  depRow.className = 'sched-row';
+  const dk = document.createElement('span');
+  dk.className = 'sched-k';
+  dk.textContent = 'Starts after';
+  const dep = document.createElement('select');
+  dep.title = 'This item follows another — the dependency the Gantt chart links';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = '— NOTHING —';
+  dep.append(none);
+  project.items.filter(o => o.id !== item.id).forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = String(o.id);
+    opt.textContent = o.text.length > 34 ? o.text.slice(0, 33) + '…' : o.text;
+    dep.append(opt);
+  });
+  dep.value = item.depends_on ? String(item.depends_on) : '';
+  dep.onchange = async () => {
+    try {
+      await api('PATCH', '/api/items/' + item.id, { depends_on: dep.value ? Number(dep.value) : null });
+    } catch (err) {
+      dep.value = item.depends_on ? String(item.depends_on) : '';
+      status.className = 'chip err';
+      status.textContent = 'Rejected — would loop';
+      return;
+    }
+    load();
+  };
+  depRow.append(dk, dep);
+
+  sched.append(factRow, dateRow, depRow);
+  notes.append(sched);
+
+  const ta = document.createElement('textarea');
+  ta.value = item.notes;
+  ta.placeholder = 'PER-ITEM NOTES';
+  const foot = document.createElement('div');
+  foot.className = 'notes-foot';
+  const save = document.createElement('button');
+  save.className = 'ghost';
+  save.textContent = 'Save notes';
+  const saved = document.createElement('span');
+  saved.className = 'notes-saved';
+  save.onclick = async () => {
+    const r = await api('PATCH', '/api/items/' + item.id, { notes: ta.value });
+    item.notes = r.notes;
+    saved.textContent = 'SAVED';
+  };
+  ta.oninput = () => { saved.textContent = ''; };
+  foot.append(save, saved);
+  notes.append(ta, foot);
+  li.append(notes);
+  return li;
+}
+
+// The add-item box. A project shows one on its card and another in its modal, so
+// the form is keyed: `key` is where the caret is parked (focusAddId) and where the
+// half-typed text is carried across the rebuild, keeping the two boxes independent.
+function addItemForm(project, key) {
+  const form = el('form', 'add-item');
+  const input = el('input');
+  input.maxLength = 200;
+  input.placeholder = 'NEW ITEM';
+  input.autocomplete = 'off';
+  const btn = el('button', 'ghost', '+ Item');
+  btn.type = 'submit';
+  form.append(input, btn);
+  addInputs.set(key, input);
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const v = input.value.trim();
+    if (!v) { input.focus(); return; }
+    input.value = '';   // cleared up front so keys struck during the save aren't mixed into it
+    focusAddId = key;
+    try {
+      await api('POST', '/api/projects/' + project.id + '/items', { text: v });
+    } catch (err) {
+      if (!input.value) input.value = v;   // save failed — hand the text back
+      focusAddId = null;
+      input.focus();
+      throw err;
+    }
+    load();
+  };
+  return form;
+}
+
+// =================================================================
+// LOGO — rastered here, on the client. The image file never leaves the browser.
+// We decode it, key out a flat background, downsample it to an N x N grid of
+// solid cells, and send only that grid — plus a small PNG thumbnail, so the size
+// setting can be changed later without asking for the file again. The city then
+// paints those cells GIANT across its tower's two street-facing walls.
+//
+// Uploading the grid instead of the file means the server never decodes an image
+// it was handed (it has no image library, and now needs none), and the city never
+// decodes one mid-bake either.
+// =================================================================
+const LOGO_MIN = 4, LOGO_MAX = 38, LOGO_DEFAULT = 32;
+
+// RASTER LIMITS. Checked here before a byte is read, so a bad file fails in the
+// picker rather than at the API. app.py re-checks everything it stores, so these
+// are the friendly limits, not the security boundary.
+const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const LOGO_MAX_BYTES = 2 * 1024 * 1024;  // 2 MB source file
+const LOGO_MAX_DIM = 4096;               // per side; a decode bomb gets no further
+const LOGO_MIN_DIM = 16;                 // below this there is nothing to raster
+const LOGO_THUMB = 256;                  // the stored re-raster source, PNG
+const LOGO_ALPHA = 110;                  // a downsampled cell this opaque is ink
+
+const logoSrcCache = new Map();  // project id -> thumbnail data URL
+
+function cv2d(w, h) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  return cv;
+}
+
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error('that file could not be decoded as an image'));
+    img.src = src;
+  });
+}
+
+function readAsDataURL(file) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = () => rej(new Error('that file could not be read'));
+    fr.readAsDataURL(file);
+  });
+}
+
+// A logo handed to us as a JPEG has no alpha, so it arrives as art on a flat
+// white card — which would raster to a giant white SQUARE on the building. If the
+// image has no real transparency and its four corners agree, flood-fill that
+// colour in from the border and make it transparent. Border fill, not a colour
+// key: keying every white pixel would punch holes through white *inside* the mark.
+function keyBackground(img) {
+  const { data, width: w, height: h } = img;
+  let clear = 0;
+  for (let i = 3; i < data.length; i += 4) if (data[i] < 250) clear++;
+  if (clear > w * h * 0.02) return false;   // it already has alpha — trust it
+
+  const at = (x, y) => (y * w + x) * 4;
+  const near = (i, c, tol) =>
+    Math.abs(data[i] - c[0]) <= tol && Math.abs(data[i + 1] - c[1]) <= tol &&
+    Math.abs(data[i + 2] - c[2]) <= tol;
+  const corners = [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]].map(([x, y]) => {
+    const i = at(x, y);
+    return [data[i], data[i + 1], data[i + 2]];
+  });
+  if (!corners.every(c => near(at(0, 0), c, 24))) return false;  // no flat background
+
+  const bg = corners[0], seen = new Uint8Array(w * h), q = [];
+  const push = (x, y) => {
+    const k = y * w + x;
+    if (seen[k]) return;
+    seen[k] = 1;
+    if (!near(at(x, y), bg, 34)) return;   // boundary: marked, but not filled through
+    data[at(x, y) + 3] = 0;
+    q.push(k);
+  };
+  for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
+  for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+  while (q.length) {
+    const k = q.pop(), x = k % w, y = (k / w) | 0;
+    if (x > 0) push(x - 1, y);
+    if (x < w - 1) push(x + 1, y);
+    if (y > 0) push(x, y - 1);
+    if (y < h - 1) push(x, y + 1);
+  }
+  return true;
+}
+
+// File -> bounded PNG thumbnail, background keyed. This is what gets stored, and
+// what every later re-raster reads from.
+async function logoThumb(file) {
+  if (!LOGO_TYPES.includes(file.type))
+    throw new Error('logo must be a PNG, JPEG, WEBP or GIF');
+  if (file.size > LOGO_MAX_BYTES)
+    throw new Error('logo must be ' + (LOGO_MAX_BYTES / 1048576) + ' MB or smaller');
+  const img = await loadImage(await readAsDataURL(file));
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  if (iw > LOGO_MAX_DIM || ih > LOGO_MAX_DIM)
+    throw new Error('logo must be at most ' + LOGO_MAX_DIM + 'px on a side');
+  if (iw < LOGO_MIN_DIM || ih < LOGO_MIN_DIM)
+    throw new Error('logo must be at least ' + LOGO_MIN_DIM + 'px on a side');
+
+  const s = Math.min(1, LOGO_THUMB / Math.max(iw, ih));
+  const w = Math.max(1, Math.round(iw * s)), h = Math.max(1, Math.round(ih * s));
+  const cv = cv2d(w, h), ctx = cv.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, w, h);
+  const px = ctx.getImageData(0, 0, w, h);
+  if (keyBackground(px)) ctx.putImageData(px, 0, 0);
+  return cv.toDataURL('image/png');
+}
+
+// Thumbnail -> the N x N grid the city paints. Halve repeatedly before the final
+// draw: one drastic downscale throws away most of the source pixels, and a logo
+// reduced to 10 cells a side cannot afford that.
+async function logoCells(src, n) {
+  const img = await loadImage(src);
+  const fit = Math.min(n / img.naturalWidth, n / img.naturalHeight);
+  const dw = Math.max(1, Math.round(img.naturalWidth * fit));
+  const dh = Math.max(1, Math.round(img.naturalHeight * fit));
+
+  let step = img, sw = img.naturalWidth, sh = img.naturalHeight;
+  while (sw >> 1 >= dw && sh >> 1 >= dh && sw > 1 && sh > 1) {
+    sw = Math.max(dw, sw >> 1); sh = Math.max(dh, sh >> 1);
+    const c = cv2d(sw, sh), x = c.getContext('2d');
+    x.imageSmoothingEnabled = true;
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(step, 0, 0, sw, sh);
+    step = c;
+  }
+
+  const cv = cv2d(n, n), ctx = cv.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  // Aspect preserved, centred, transparent padding — a wide logo keeps its shape.
+  ctx.drawImage(step, ((n - dw) / 2) | 0, ((n - dh) / 2) | 0, dw, dh);
+
+  const d = ctx.getImageData(0, 0, n, n).data;
+  const hex = v => v.toString(16).padStart(2, '0');
+  const cells = [];
+  for (let k = 0; k < n * n; k++) {
+    const i = k * 4;
+    cells.push(d[i + 3] >= LOGO_ALPHA ? '#' + hex(d[i]) + hex(d[i + 1]) + hex(d[i + 2]) : null);
+  }
+  if (!cells.some(Boolean)) throw new Error('that image rasters to nothing at this size');
+  return cells;
+}
+
+function drawLogoPreview(cv, logo) {
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if (!logo || !Array.isArray(logo.cells)) {
+    ctx.strokeStyle = '#B8B2A6';
+    ctx.setLineDash([3, 3]);
+    ctx.strokeRect(1.5, 1.5, cv.width - 3, cv.height - 3);
+    return;
+  }
+  const n = logo.size, s = cv.width / n;
+  logo.cells.forEach((c, k) => {
+    if (!c) return;
+    ctx.fillStyle = c;
+    ctx.fillRect(Math.floor((k % n) * s), Math.floor(((k / n) | 0) * s),
+                 Math.ceil(s), Math.ceil(s));
+  });
+}
+
+async function logoSrcFor(project) {
+  // The grid ships with the project; the thumbnail does not (it would dwarf the
+  // payload). Fetch it only when the size setting actually changes.
+  if (logoSrcCache.has(project.id)) return logoSrcCache.get(project.id);
+  const r = await api('GET', '/api/projects/' + project.id + '/logo');
+  if (r && r.src) logoSrcCache.set(project.id, r.src);
+  return r && r.src;
+}
+
+function logoControl(project) {
+  const wrap = document.createElement('div');
+  wrap.className = 'logo-ctl';
+  const has = !!(project.logo && Array.isArray(project.logo.cells));
+
+  const cap = document.createElement('span');
+  cap.className = 'logo-cap';
+  cap.textContent = 'Image';
+  wrap.append(cap);
+
+  const prev = cv2d(40, 40);
+  prev.className = 'logo-prev';
+  drawLogoPreview(prev, project.logo);
+  prev.title = has
+    ? project.logo.size + '×' + project.logo.size + ' — worn on the tower'
+    : 'No logo on this project';
+  wrap.append(prev);
+
+  const err = document.createElement('span');
+  err.className = 'logo-err';
+  const fail = e => {
+    err.textContent = e.message || String(e);
+    prev.classList.add('bad');
+  };
+
+  // A hidden <input type=file> driven by a real <button>: the card's mousedown
+  // handler already lets buttons through, so clicking this cannot re-render the
+  // grid out from under the picker before the dialog opens.
+  const file = document.createElement('input');
+  file.type = 'file';
+  file.accept = LOGO_TYPES.join(',');
+  file.hidden = true;
+  file.onchange = async () => {
+    const f = file.files && file.files[0];
+    file.value = '';                        // so re-picking the same file re-fires
+    if (!f) return;
+    err.textContent = '';
+    prev.classList.remove('bad');
+    try {
+      const n = has ? project.logo.size : LOGO_DEFAULT;
+      const src = await logoThumb(f);
+      const cells = await logoCells(src, n);
+      await api('PUT', '/api/projects/' + project.id + '/logo', { src, size: n, cells });
+      logoSrcCache.set(project.id, src);
+      load();
+    } catch (e) { fail(e); }
+  };
+
+  const pick = document.createElement('button');
+  pick.className = 'ghost';
+  pick.textContent = has ? 'Replace logo' : '⬆ Logo';
+  pick.title = 'PNG / JPEG / WEBP / GIF, up to ' + (LOGO_MAX_BYTES / 1048576)
+    + ' MB and ' + LOGO_MAX_DIM + 'px a side';
+  pick.onclick = () => file.click();
+  wrap.append(pick, file);
+
+  if (has) {
+    // The pixel-size setting: how many cells the logo rasters to, per side.
+    // Changing it re-rasters from the stored thumbnail — no re-upload.
+    const size = document.createElement('input');
+    size.type = 'range';
+    size.className = 'logo-size';
+    size.min = LOGO_MIN; size.max = LOGO_MAX; size.step = 1;
+    size.value = project.logo.size;
+    const lab = document.createElement('span');
+    lab.className = 'logo-lab';
+    const say = v => { lab.textContent = v + 'PX'; };
+    say(project.logo.size);
+    size.title = 'Logo raster size, in pixels per side';
+    size.oninput = () => say(size.value);           // label tracks the drag
+    size.onchange = async () => {                   // one save per release, not per pixel
+      const n = Number(size.value);
+      if (n === project.logo.size) return;
+      err.textContent = '';
+      try {
+        const src = await logoSrcFor(project);
+        if (!src) throw new Error('no stored image — re-upload the logo');
+        const cells = await logoCells(src, n);
+        await api('PUT', '/api/projects/' + project.id + '/logo', { src, size: n, cells });
+        load();
+      } catch (e) { fail(e); }
+    };
+    wrap.append(size, lab);
+
+    const rm = document.createElement('button');
+    rm.className = 'ghost danger';
+    rm.textContent = '✕';
+    rm.title = 'Remove this logo';
+    rm.onclick = async () => {
+      await api('DELETE', '/api/projects/' + project.id + '/logo');
+      logoSrcCache.delete(project.id);
+      load();
+    };
+    wrap.append(rm);
+  }
+
+  wrap.append(err);
+  return wrap;
+}
+
+function renderCard(project) {
+  const card = document.createElement('div');
+  card.id = 'p' + project.id;   // the city links straight at this
+  card.className = 'card' + (selectedCard === project.id ? ' selected' : '');
+  card.onmousedown = e => {
+    // Selecting re-renders the whole grid, which would tear this card's DOM out
+    // from under a control mid-click and swallow the click. Let controls act.
+    if (e.target.closest('button, a, input, textarea, label')) return;
+    if (selectedCard !== project.id) { selectedCard = project.id; render(); }
+  };
+
+  const head = document.createElement('div');
+  head.className = 'card-head';
+  head.append(isoGlyph(project));
+
+  const title = document.createElement('div');
+  title.className = 'card-title';
+  title.textContent = project.title;
+  title.title = 'Click to rename';
+  title.onclick = () => {
+    const inp = document.createElement('input');
+    inp.value = project.title;
+    inp.maxLength = 80;
+    inp.onkeydown = e => {
+      if (e.key === 'Enter') inp.blur();
+      if (e.key === 'Escape') { inp.value = project.title; inp.blur(); }
+    };
+    inp.onblur = async () => {
+      const v = inp.value.trim();
+      if (v && v !== project.title) await api('PATCH', '/api/projects/' + project.id, { title: v });
+      load();
+    };
+    head.replaceChild(inp, title);
+    inp.focus(); inp.select();
+  };
+
+  const doneN = project.items.filter(i => i.done).length;
+  const tally = document.createElement('span');
+  tally.className = 'tally' + (project.items.length && doneN === project.items.length ? ' done' : '');
+  tally.textContent = doneN + '/' + project.items.length;
+
+  const stories = document.createElement('span');
+  stories.className = 'stories';
+  stories.textContent = project.stories + 'F';
+  stories.title = 'Stories on the city map';
+
+  head.append(title, stories, tally);
+  card.append(head);
+  card.append(renderTagBar(project));
+
+  const ul = document.createElement('ul');
+  ul.className = 'items';
+  project.items.forEach(i => ul.append(renderItem(project, i)));
+  card.append(ul);
+
+  card.append(addItemForm(project, project.id));
+
+  // The project's image — uploaded, rastered, and worn GIANT on its tower.
+  // This gets its OWN row: .card-foot is a single-line flex-end row, and it has
+  // grown enough buttons that anything added to it overflows off the left edge.
+  card.append(logoControl(project));
+
+  // Blow this project up to the full-screen detail view. This is the card's
+  // primary action, so it gets its own full-width bar rather than competing
+  // with the secondary chips in the (already full) foot row.
+  const expand = document.createElement('button');
+  expand.className = 'expand';
+  // ▸ rather than the fullscreen glyph (⛶): that one is missing from the
+  // monospace stack and renders as tofu, which is glaring at this size.
+  expand.textContent = 'Expand Project ▸';
+  expand.title = 'Open this project full screen';
+  expand.onclick = () => openModal(project.id);
+  card.append(expand);
+
+  const foot = document.createElement('div');
+  foot.className = 'card-foot';
+
+  // Jump to this project's tower on the map; the city selects it on arrival.
+  const cityLink = document.createElement('a');
+  cityLink.className = 'ghost city-link';
+  cityLink.href = '/city#p' + project.id;
+  cityLink.textContent = 'View in city ▸';
+  cityLink.title = 'Show this project\'s building on the city map';
+  foot.append(cityLink);
+
+  // The city only builds this project's tower while the toggle is enabled.
+  const cityTog = document.createElement('button');
+  cityTog.className = 'ghost city-tog ' + (project.render_progress ? 'on' : 'off');
+  cityTog.textContent = project.render_progress ? 'City: on' : 'City: off';
+  cityTog.title = 'Render this project\'s progress on the city map';
+  cityTog.onclick = async () => {
+    await api('PATCH', '/api/projects/' + project.id, { render_progress: !project.render_progress });
+    load();
+  };
+  foot.append(cityTog);
+
+  const delP = document.createElement('button');
+  delP.className = 'danger ghost';
+  delP.textContent = 'Demolish project';
+  delP.onclick = async () => {
+    if (!confirm('Demolish "' + project.title + '" and all its items?')) return;
+    await api('DELETE', '/api/projects/' + project.id);
+    if (selectedCard === project.id) selectedCard = null;
+    load();
+  };
+  foot.append(delP);
+  card.append(foot);
+  return card;
+}
+
+// =================================================================
+// full-screen modal — one project, every detail
+//
+// The modal is not a second source of truth: it is another view of the same
+// `projects` array, rebuilt by render() alongside the grid, out of the same
+// renderItem()/addItemForm() the cards use. Check something off in the modal and
+// the card behind it is already correct, because both were just redrawn.
+// =================================================================
+const dayLabel = s => {
+  const [y, m, d] = s.slice(0, 10).split('-').map(Number);
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+};
+function statRow(label, value, cls) {
+  const row = el('div', 'stat' + (cls ? ' ' + cls : ''));
+  row.append(el('span', '', label), el('b', '', String(value)));
+  return row;
+}
+
+function openModal(pid) {
+  modalPid = pid;
+  modalOpening = true;
+  selectedCard = pid;   // the card behind stays marked, so closing lands you on it
+  render();
+}
+function closeModal() {
+  const pid = modalPid;
+  modalPid = null;
+  render();
+  const card = pid === null ? null : document.getElementById('p' + pid);
+  if (card) card.scrollIntoView({ block: 'center' });
+}
+
+// =================================================================
+// GANTT: the schedule of a project, drawn from the same `projects` array the
+// item list renders. A bar IS an item — there is no second store to sync, so a
+// date edited under ITEMS has already moved the bar by the next render.
+// =================================================================
+const GROW_H = 26;              // row pitch; the arrow geometry is computed from it
+const idxToIso = idx => new Date(idx * DAY_MS).toISOString().slice(0, 10);
+
+function ganttModel(project) {
+  const rows = project.items.map(item => {
+    const s = item.start_at ? dayIdx(item.start_at) : null;
+    const e = item.due_at ? dayIdx(item.due_at) : null;
+    // both dates -> a span; one date -> a moment; neither -> unscheduled
+    const kind = s !== null && e !== null ? 'bar' : (s !== null || e !== null ? 'mile' : 'none');
+    return { item, s, e, kind, at: e !== null ? e : s };
+  });
+  const dated = rows.filter(r => r.kind !== 'none');
+  if (!dated.length) return null;
+
+  const today = todayIdx();
+  // "Now" is always in frame: a schedule you can't locate yourself on is a picture, not a plan.
+  let lo = Math.min(today, ...dated.map(r => (r.s !== null ? r.s : r.e)));
+  let hi = Math.max(today, ...dated.map(r => (r.e !== null ? r.e : r.s)));
+  lo -= 1; hi += 1;                       // a day of air so nothing touches the frame
+  return { rows, dated, lo, hi, days: hi - lo + 1, today };
+}
+
+// x as a percentage of the track, for the *start* of day d
+const gpct = (m, d) => ((d - m.lo) / m.days) * 100;
+
+function ganttTicks(m) {
+  const ticks = el('div', 'gantt-ticks');
+  // pick a step that yields roughly 4-8 labels, on human-sized intervals
+  const step = [1, 2, 3, 7, 14, 30, 60, 90, 180, 365].find(s => m.days / s <= 8) || 365;
+  const nowX = gpct(m, m.today + 0.5);
+  for (let d = m.lo + 1; d <= m.hi; d += step) {
+    const x = gpct(m, d + 0.5);
+    // TODAY owns its slot on the axis; a date label printed under it just overprints.
+    if (Math.abs(x - nowX) < 6) continue;
+    const t = el('div', 'gantt-tick', dayLabel(idxToIso(d)));
+    t.style.left = x + '%';
+    ticks.append(t);
+  }
+  return ticks;
+}
+
+// Jump from a bar to the item that owns it.
+function ganttGoToItem(id) {
+  modalTab = 'items';
+  render();
+  // No flash/pulse on arrival — this UI is deliberately free of blinking.
+  $modal.querySelector('#mi' + id)?.scrollIntoView({ block: 'center' });
+}
+
+// Finish-to-start arrows. Geometry is analytic (fixed row pitch), so nothing
+// has to be measured after layout and the chart can be built in one pass.
+function ganttLinks(m, indexById) {
+  const links = el('div', 'gantt-links');
+  m.rows.forEach((r, j) => {
+    const pid = r.item.depends_on;
+    if (!pid) return;
+    const k = indexById.get(pid);
+    if (k === undefined) return;              // predecessor deleted or in another project
+    const pred = m.rows[k];
+    if (pred.kind === 'none' || r.kind === 'none') return;   // nothing to point at
+
+    const from = (pred.e !== null ? pred.e : pred.s) + 1;     // right edge of the predecessor
+    const to = r.s !== null ? r.s : r.at;                     // left edge of the dependent
+    const x1 = gpct(m, from), x2 = gpct(m, to);
+    const y1 = k * GROW_H + GROW_H / 2, y2 = j * GROW_H + GROW_H / 2;
+    // A dependent that starts before its predecessor finishes is a broken plan.
+    // Say so in vermillion rather than drawing a tidy line over a contradiction.
+    const bad = to <= (pred.e !== null ? pred.e : pred.s);
+    const cls = bad ? ' bad' : '';
+
+    const stub = el('s', cls.trim());
+    stub.style.cssText = `left:${x1}%;width:10px;top:${y1 - 1}px;height:2px;`;
+    const vert = el('s', cls.trim());
+    vert.style.cssText =
+      `left:calc(${x1}% + 10px);top:${Math.min(y1, y2)}px;height:${Math.abs(y2 - y1)}px;width:2px;`;
+    const lead = el('s', cls.trim());
+    lead.style.cssText =
+      `left:min(calc(${x1}% + 10px), ${x2}%);` +
+      `width:calc(max(calc(${x1}% + 10px), ${x2}%) - min(calc(${x1}% + 10px), ${x2}%));` +
+      `top:${y2 - 1}px;height:2px;`;
+    const head = el('u', cls.trim());
+    head.style.cssText = `left:calc(${x2}% - 5px);top:${y2 - 4}px;`;
+    links.append(stub, vert, lead, head);
+  });
+  return links;
+}
+
+function renderGantt(project) {
+  const wrap = el('div', 'gantt-scroll');
+  const m = ganttModel(project);
+  if (!m) {
+    wrap.append(el('div', 'modal-empty',
+      'No dates yet — open an item, set a Start and a Target, and it appears here'));
+    return wrap;
+  }
+  const chart = el('div', 'gantt');
+
+  const axis = el('div', 'gantt-axis');
+  axis.append(el('div'), ganttTicks(m));
+  chart.append(axis);
+
+  const rowsWrap = el('div', 'gantt-rows');
+  const indexById = new Map(m.rows.map((r, i) => [r.item.id, i]));
+
+  m.rows.forEach(r => {
+    const row = el('div', 'gantt-row' + (r.item.done ? ' done' : ''));
+    const label = el('div', 'gantt-label', r.item.text);
+    label.title = r.item.text + ' — click to open in ITEMS';
+    label.onclick = () => ganttGoToItem(r.item.id);
+
+    const track = el('div', 'gantt-track');
+    const st = goalStatus(r.item);
+
+    if (r.kind === 'bar') {
+      const len = Math.max(1, r.e - r.s + 1);   // inclusive; a same-day task is 1 day, not 0
+      const bar = el('div', 'gantt-bar' + (r.item.done ? ' done' : '') + (r.item.overdue ? ' overdue' : ''));
+      bar.style.left = gpct(m, r.s) + '%';
+      bar.style.width = (len / m.days) * 100 + '%';
+      const fill = el('i');
+      fill.style.width = Math.round(r.item.completion * 100) + '%';
+      bar.append(fill);
+      bar.title = `${r.item.text}\n${dayLabel(r.item.start_at)} → ${dayLabel(r.item.due_at)}` +
+        `\n${plural(len, 'DAY')} · ${Math.round(r.item.completion * 100)}% · ${st.text}`;
+      bar.onclick = () => ganttGoToItem(r.item.id);
+      track.append(bar);
+    } else if (r.kind === 'mile') {
+      const mile = el('div', 'gantt-mile' + (r.item.overdue ? ' overdue' : ''));
+      mile.style.left = gpct(m, r.at + 0.5) + '%';
+      mile.title = `${r.item.text}\n${r.s !== null ? 'Starts' : 'Target'} ${dayLabel(idxToIso(r.at))}` +
+        `\n${st.text}\n(set the other date to make this a bar)`;
+      mile.onclick = () => ganttGoToItem(r.item.id);
+      track.append(mile);
+    }
+    row.append(label, track);
+    rowsWrap.append(row);
+  });
+
+  // The arrows and the today line live above the rows, in the same coordinate space.
+  const overlay = el('div', 'gantt-row');
+  overlay.style.cssText = 'position:absolute;inset:0;height:auto;pointer-events:none;';
+  const overTrack = el('div', 'gantt-track');
+  overTrack.style.cssText = 'height:100%;';
+  const now = el('div', 'gantt-now');
+  now.style.left = gpct(m, m.today + 0.5) + '%';
+  now.title = 'Today — ' + dayLabel(idxToIso(m.today));
+  overTrack.append(now, ganttLinks(m, indexById));
+  overlay.append(el('div'), overTrack);
+  rowsWrap.append(overlay);
+  chart.append(rowsWrap);
+
+  // TODAY caption sits on the axis, aligned to the same column as the line
+  const cap = el('div', 'gantt-nowcap', 'TODAY');
+  cap.style.left = gpct(m, m.today + 0.5) + '%';
+  axis.querySelector('.gantt-ticks').append(cap);
+
+  const unsched = m.rows.filter(r => r.kind === 'none');
+  if (unsched.length) {
+    const box = el('div', 'gantt-unsched');
+    box.append(el('h4', '', plural(unsched.length, 'ITEM') + ' unscheduled'));
+    unsched.forEach(r => {
+      const u = el('div', 'u-row');
+      u.append(el('span', '', '◇'), el('span', '', r.item.text));
+      u.title = 'No dates set — click to open in ITEMS';
+      u.onclick = () => ganttGoToItem(r.item.id);
+      box.append(u);
+    });
+    chart.append(box);
+  }
+
+  const legend = el('div', 'gantt-legend');
+  const key = (cls, text) => {
+    const s = el('span');
+    const i = el('i');
+    if (cls) i.style.background = cls;
+    s.append(i, el('b', '', text));
+    return s;
+  };
+  legend.append(
+    key('var(--cerulean)', 'In progress'),
+    key('var(--grass)', 'Complete'),
+    key('var(--vermillion)', 'Overdue / broken dependency'),
+    key('var(--saffron)', 'Single date'),
+  );
+  chart.append(legend);
+
+  wrap.append(chart);
+  return wrap;
+}
+
+function renderModal() {
+  const project = modalPid === null ? null : projects.find(p => p.id === modalPid);
+  if (!project) {
+    // closed, never opened, or the project was demolished out from under us
+    modalPid = null;
+    $modal.hidden = true;
+    $modal.replaceChildren();
+    document.body.style.overflow = '';
+    return;
+  }
+  // The page behind must not scroll while the modal owns the screen.
+  document.body.style.overflow = 'hidden';
+  // The list is rebuilt from scratch on every mutation; without this, ticking an
+  // item halfway down would fling the reader back to the top.
+  const keepScroll = $modal.querySelector('.modal-items')?.scrollTop ?? 0;
+
+  const items = project.items;
+  const doneN = items.filter(i => i.done).length;
+  const lateN = items.filter(i => i.overdue).length;
+  const noted = items.filter(i => i.notes.trim());
+  const avg = items.length ? items.reduce((s, i) => s + i.completion, 0) / items.length : 0;
+
+  const panel = el('div', 'modal-panel');
+
+  // ---- head: the building, the name, the vitals ----
+  const head = el('div', 'modal-head');
+  head.append(isoGlyph(project, 2));   // same tower as the card and the city, at 2x
+
+  const titlewrap = el('div', 'modal-titlewrap');
+  const title = el('div', 'modal-title', project.title);
+  title.title = 'Click to rename';
+  title.onclick = () => {
+    const inp = el('input');
+    inp.value = project.title;
+    inp.maxLength = 80;
+    inp.onkeydown = e => {
+      if (e.key === 'Enter') inp.blur();
+      if (e.key === 'Escape') { inp.value = project.title; inp.blur(); }
+    };
+    inp.onblur = async () => {
+      const v = inp.value.trim();
+      if (v && v !== project.title) await api('PATCH', '/api/projects/' + project.id, { title: v });
+      load();
+    };
+    titlewrap.replaceChild(inp, title);
+    inp.focus(); inp.select();
+  };
+
+  const chips = el('div', 'modal-chips');
+  const stories = el('span', 'stories', project.stories + 'F');
+  stories.title = 'Stories on the city map — one per completed item, plus the ground floor';
+  const tally = el('span', 'tally' + (items.length && doneN === items.length ? ' done' : ''),
+    doneN + '/' + items.length + ' DONE');
+  chips.append(stories, tally);
+  if (lateN) chips.append(el('span', 'chip overdue', plural(lateN, 'ITEM') + ' OVERDUE'));
+  else if (items.length && doneN === items.length) chips.append(el('span', 'chip done', 'Topped out'));
+  if (project.span) {
+    chips.append(el('span', 'chip', dayLabel(project.span.start || project.span.end) +
+      ' → ' + dayLabel(project.span.end || project.span.start)));
+  }
+  titlewrap.append(title, chips);
+
+  const close = el('button', 'modal-close', '✕ Close');
+  close.title = 'Close (ESC)';
+  close.onclick = closeModal;
+  head.append(titlewrap, close);
+  panel.append(head);
+
+  const body = el('div', 'modal-body');
+
+  // ---- rail: progress, schedule, notes, actions ----
+  const side = el('div', 'modal-side');
+
+  const prog = el('div', 'panel');
+  prog.append(el('h3', '', 'Progress'));
+  const bar = el('div', 'bar');
+  const fill = el('i', avg >= 1 ? 'full' : '');
+  fill.style.width = (avg * 100).toFixed(1) + '%';
+  bar.append(fill);
+  bar.title = Math.round(avg * 100) + '% complete across every item';
+  prog.append(
+    bar,
+    statRow('Completion', Math.round(avg * 100) + '%'),
+    statRow('Items', items.length),
+    statRow('Complete', doneN, doneN && doneN === items.length ? 'good' : ''),
+    statRow('Open', project.open),
+    statRow('Overdue', lateN, lateN ? 'warn' : ''),
+    statRow('Stories', project.stories + 'F'),
+    statRow('On city map', project.render_progress ? 'YES' : 'NO'),
+  );
+  side.append(prog);
+
+  const sched = el('div', 'panel');
+  sched.append(el('h3', '', 'Schedule'));
+  if (project.span) {
+    sched.append(
+      statRow('Starts', project.span.start ? dayLabel(project.span.start) : '—'),
+      statRow('Ends', project.span.end ? dayLabel(project.span.end) : '—'),
+      statRow('Span', plural(project.span.days, 'DAY')),
+    );
+  } else {
+    sched.append(statRow('Window', 'UNSCHEDULED'));
+  }
+  // The next thing actually due — the one date worth carrying around.
+  const next = items
+    .filter(i => !i.done && i.due_at)
+    .sort((a, b) => dayIdx(a.due_at) - dayIdx(b.due_at))[0];
+  if (next) {
+    const st = goalStatus(next);
+    sched.append(statRow('Next target', dayLabel(next.due_at)));
+    const row = el('div', 'stat');
+    row.append(el('span', '', 'Status'), el('span', 'chip ' + st.cls, st.text));
+    sched.append(row);
+  }
+  side.append(sched);
+
+  const nb = el('div', 'panel');
+  nb.append(el('h3', '', 'Notes (' + noted.length + ')'));
+  if (!noted.length) {
+    nb.append(el('div', 'modal-empty', 'No notes written yet'));
+  } else {
+    const book = el('div', 'notebook');
+    noted.forEach(i => {
+      const n = el('div', 'note-lite' + (i.done ? ' done' : ''));
+      n.append(el('b', '', i.text), el('span', '', i.notes.trim()));
+      n.title = 'Open this note in the list';
+      n.onclick = () => {
+        openNotes.add(i.id);
+        modalTab = 'items';   // the row it scrolls to only exists on this tab
+        render();
+        // The list was just rebuilt, so the row to scroll to is the *new* one.
+        $modal.querySelector('#mi' + i.id)?.scrollIntoView({ block: 'center' });
+      };
+      book.append(n);
+    });
+    nb.append(book);
+  }
+  side.append(nb);
+
+  const acts = el('div', 'panel modal-actions');
+  acts.append(el('h3', '', 'Actions'));
+  const cityLink = el('a', 'ghost city-link', 'View in city ▸');
+  cityLink.href = '/city#p' + project.id;
+  cityLink.title = 'Show this project\'s building on the city map';
+  const cityTog = el('button', 'ghost city-tog ' + (project.render_progress ? 'on' : 'off'),
+    project.render_progress ? 'City: on' : 'City: off');
+  cityTog.title = 'Render this project\'s progress on the city map';
+  cityTog.onclick = async () => {
+    await api('PATCH', '/api/projects/' + project.id, { render_progress: !project.render_progress });
+    load();
+  };
+  const delP = el('button', 'danger ghost', 'Demolish project');
+  delP.onclick = async () => {
+    if (!confirm('Demolish "' + project.title + '" and all its items?')) return;
+    await api('DELETE', '/api/projects/' + project.id);
+    if (selectedCard === project.id) selectedCard = null;
+    modalPid = null;   // the modal's subject is gone; renderModal() would close it anyway
+    load();
+  };
+  acts.append(cityLink, cityTog, delP);
+  side.append(acts);
+
+  // ---- main: the items, in full, with the add box pinned under them ----
+  const main = el('div', 'modal-main');
+
+  // Two views of one project: the list you edit, and the schedule it implies.
+  const tabs = el('div', 'modal-tabs');
+  const scheduled = items.filter(i => i.start_at || i.due_at).length;
+  const mkTab = (key, text, count) => {
+    const b = el('button', modalTab === key ? 'on' : '', text);
+    if (count !== null) b.append(el('span', 'count', String(count)));
+    b.onclick = () => { modalTab = key; render(); };
+    return b;
+  };
+  tabs.append(mkTab('items', 'Items', items.length), mkTab('gantt', 'Gantt', scheduled));
+  main.append(tabs);
+
+  const ul = el('ul', 'modal-items');
+  if (modalTab === 'gantt') {
+    main.append(renderGantt(project));
+  } else {
+    main.append(el('h3', '', 'Items — ' + doneN + ' of ' + items.length + ' built'));
+    if (!items.length) {
+      ul.append(el('li', 'modal-empty', 'No items yet — add the first one below'));
+    } else {
+      items.forEach(i => {
+        const li = renderItem(project, i);
+        li.id = 'mi' + i.id;   // the notes rail scrolls to these
+        ul.append(li);
+      });
+    }
+    main.append(ul, addItemForm(project, 'm' + project.id));
+  }
+
+  body.append(side, main);
+  panel.append(body);
+  $modal.replaceChildren(panel);
+  $modal.hidden = false;
+  if (ul.isConnected) ul.scrollTop = keepScroll;
+  if (modalOpening) {
+    modalOpening = false;
+    close.focus();   // keyboard lands inside the dialog, not back on the page
+  }
+}
+
+// Click the backdrop (the strip outside the panel) or press ESC to close. ESC
+// inside a field belongs to the field — that is how a rename is cancelled.
+$modal.onmousedown = e => { if (e.target === $modal) closeModal(); };
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || modalPid === null) return;
+  if (e.target.closest('input, textarea, select')) return;
+  closeModal();
+});
+
+let projects = [];
+function render() {
+  // Carry unsent item text across the rebuild — otherwise any render (a checkbox
+  // elsewhere, a notes panel) wipes what you were halfway through typing.
+  const carry = new Map();
+  for (const [id, inp] of addInputs) if (inp.value) carry.set(id, inp.value);
+  addInputs.clear();
+
+  $grid.replaceChildren(...projects.map(renderCard));
+  $empty.hidden = projects.length > 0;
+  // Same data, same builders — the modal is redrawn with the grid, never after it.
+  renderModal();
+
+  for (const [id, v] of carry) {
+    const inp = addInputs.get(id);
+    if (inp) inp.value = v;
+  }
+  if (focusAddId !== null) {
+    const inp = addInputs.get(focusAddId);
+    focusAddId = null;
+    if (inp) {
+      inp.focus();
+      inp.setSelectionRange(inp.value.length, inp.value.length);
+    }
+  }
+}
+async function load() {
+  projects = await api('GET', '/api/projects');
+  const live = new Set(projects.flatMap(p => p.items.map(i => i.id)));
+  openNotes = new Set([...openNotes].filter(id => live.has(id)));
+  render();
+}
+
+// Arriving from the city (/#p<id>): blow that project up in the full-screen modal
+// rather than scrolling to its card in the list.
+function hashPid() {
+  const m = /^#p(\d+)$/.exec(location.hash || '');
+  return m ? +m[1] : null;
+}
+function focusFromHash() {
+  const pid = hashPid();
+  if (pid === null || !projects.some(p => p.id === pid)) return;
+  if (modalPid !== pid) openModal(pid);
+}
+window.addEventListener('hashchange', focusFromHash);
+
+document.getElementById('newForm').onsubmit = async e => {
+  e.preventDefault();
+  const inp = document.getElementById('newTitle');
+  const v = inp.value.trim();
+  if (!v) return;
+  const p = await api('POST', '/api/projects', { title: v });
+  inp.value = '';
+  selectedCard = p.id;
+  focusAddId = p.id;   // land in the new project's item box, ready to type items
+  load();
+};
+
+load().then(focusFromHash);
+</script>
+</body>
+</html>
