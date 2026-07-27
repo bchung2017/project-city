@@ -1,0 +1,40 @@
+name: ci
+
+# Pre-deploy gate. Render auto-builds from render.yaml on push to the watched
+# branch, so a broken push ships straight to prod. This runs first on PRs and on
+# main to catch the cheap failures — dependencies that don't install and app.py
+# that doesn't parse — without needing a database.
+#
+# It deliberately does NOT import app.py or boot it: app.py reads DATABASE_URL at
+# import time and there's no DB (or secret) in CI. A syntax check is the useful,
+# DB-free signal.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Syntax-check app.py
+        run: python -c "import ast; ast.parse(open('main/app.py').read()); print('app.py parses OK')"
+
+      - name: Syntax-check helper scripts
+        run: |
+          python -m py_compile main/load_work_profile.py main/migrate_sqlite_to_pg.py
+          echo "helper scripts compile OK"
