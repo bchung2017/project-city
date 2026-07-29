@@ -597,6 +597,121 @@ async function api(method, url, body) {
 }
 
 // =================================================================
+// optimistic writes — update the local model and repaint NOW, then let the
+// server catch up in the background. Every list mutation goes through here, so a
+// checkbox, an edit, or a new task lands on screen instantly; the network round
+// trip runs after, off the critical path. Sends run serially, so a create (which
+// assigns the real id) always settles before an edit that targets it — send
+// closures read live ids off the model object, picking up the id the create just
+// wrote in. When the queue drains we quietly reload the canonical state to absorb
+// any server-derived field we didn't replicate (exact overdue, spans, real ids);
+// a failed send reloads too, which is a coarse but always-correct rollback.
+// =================================================================
+let TMP_ID = -1;         // ids for not-yet-created rows: negative, never collide with server serials
+let opQueue = Promise.resolve();
+let opInflight = 0;      // server calls queued or running
+let opFailed = false;
+let reconcileGen = 0;    // bumped each reconcile so a stale GET can't clobber a newer one
+
+// Background sender: same fetch as api(), but the queue owns the SAVING pill so it
+// doesn't flicker IDLE between serial ops.
+async function apiBg(method, url, body) {
+  const res = await fetch(url, {
+    method,
+    headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok && res.status !== 204) throw new Error(method + ' ' + url + ' -> ' + res.status);
+  return res.status === 204 ? null : res.json();
+}
+
+// Run `send` in the background, in order. No repaint — the caller already updated
+// the model and (usually) rendered.
+function enqueueWrite(send) {
+  if (!send) return;
+  opInflight++;
+  busy(true);
+  opQueue = opQueue
+    .then(send)
+    .catch(err => { opFailed = true; console.error(err); })
+    .finally(() => {
+      opInflight--;
+      busy(false);
+      if (opInflight === 0) reconcile();
+    });
+}
+
+// The standard path: apply a local change, repaint immediately, sync in the bg.
+function optimistic(apply, send) {
+  apply();
+  render();
+  enqueueWrite(send);
+}
+
+// Queue drained. Pull canonical state to absorb server-derived fields (and swap
+// temp ids for real ones); a prior failure makes this the rollback to truth.
+// Guards, in order: skip the quiet reconcile mid-edit so a caret survives; and
+// after the GET, bail if new writes queued or another reconcile started while it
+// was in flight — a stale snapshot must never overwrite a fresher optimistic one.
+async function reconcile() {
+  if (opInflight) return;
+  const failed = opFailed;
+  opFailed = false;
+  if (!failed && isEditing()) return;
+  const gen = ++reconcileGen;
+  let fresh;
+  try {
+    fresh = await apiBg('GET', '/api/projects');
+  } catch (err) {
+    console.error(err);
+    return;
+  }
+  if (opInflight || gen !== reconcileGen || (!failed && isEditing())) return;
+  if (failed) syncNote('RESYNCED');
+  projects = fresh;
+  const live = new Set(projects.flatMap(p => p.items.map(i => i.id)));
+  openNotes = new Set([...openNotes].filter(id => live.has(id)));
+  render();
+}
+
+function isEditing() {
+  const a = document.activeElement;
+  return !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+}
+
+function syncNote(msg) {
+  $statusText.textContent = msg;
+  clearTimeout(syncNote._t);
+  syncNote._t = setTimeout(() => { if (inflight <= 0) $statusText.textContent = 'IDLE'; }, 1600);
+}
+
+// ---- local-model helpers: keep the derived fields the server would recompute in
+// sync, so the instant repaint matches what the reload will later confirm. ----
+function recomputeProject(p) {
+  const built = p.items.filter(i => i.done).length;
+  p.stories = 1 + built;
+  p.open = p.items.length - built;
+}
+function setCompletion(item, project, c) {
+  item.completion = c;
+  item.done = c >= 1.0;
+  // A finished item is never overdue; otherwise it's overdue iff its target is past.
+  item.overdue = !item.done && !!item.due_at && dayIdx(item.due_at) < todayIdx();
+  recomputeProject(project);
+}
+function newItemStub(text, project) {
+  const pos = project.items.reduce((m, i) => Math.max(m, i.pos), -1) + 1;
+  return { id: TMP_ID--, text, completion: 0, done: false, notes: '', pos,
+           tags: [], created_at: new Date().toISOString(), start_at: null,
+           due_at: null, depends_on: null, overdue: false, age_days: 0, days_left: null };
+}
+function newProjectStub(title) {
+  const pos = projects.reduce((m, p) => Math.max(m, p.pos), -1) + 1;
+  return { id: TMP_ID--, title, pos, render_progress: true, tags: [], logo: null,
+           logo_size: 32, stories: 1, open: 0, items: [], span: null };
+}
+
+// =================================================================
 // render
 // =================================================================
 const $grid = document.getElementById('grid');
@@ -888,9 +1003,12 @@ function renderItem(project, item) {
   const cb = document.createElement('div');
   cb.className = 'cb';
   cb.textContent = item.done ? 'X' : '';
-  cb.onclick = async () => {
-    await api('PATCH', '/api/items/' + item.id, { done: !item.done });
-    load();
+  cb.onclick = () => {
+    const want = !item.done;
+    optimistic(
+      () => setCompletion(item, project, want ? 1 : 0),
+      () => apiBg('PATCH', '/api/items/' + item.id, { done: want }),
+    );
   };
 
   const text = document.createElement('span');
@@ -909,9 +1027,12 @@ function renderItem(project, item) {
   pctv.className = 'pctv';
   pctv.textContent = range.value + '%';
   range.oninput = () => { pctv.textContent = range.value + '%'; };
-  range.onchange = async () => {
-    await api('PATCH', '/api/items/' + item.id, { completion: Number(range.value) / 100 });
-    load();
+  range.onchange = () => {
+    const c = Number(range.value) / 100;
+    optimistic(
+      () => setCompletion(item, project, c),
+      () => apiBg('PATCH', '/api/items/' + item.id, { completion: c }),
+    );
   };
   pct.append(range, pctv);
 
@@ -926,10 +1047,15 @@ function renderItem(project, item) {
   const del = document.createElement('button');
   del.className = 'del-x';
   del.textContent = 'DEL';
-  del.onclick = async () => {
-    await api('DELETE', '/api/items/' + item.id);
-    openNotes.delete(item.id);
-    load();
+  del.onclick = () => {
+    optimistic(
+      () => {
+        project.items = project.items.filter(i => i.id !== item.id);
+        openNotes.delete(item.id);
+        recomputeProject(project);
+      },
+      () => apiBg('DELETE', '/api/items/' + item.id),
+    );
   };
 
   row.append(cb, text, pct, toggle, del);
@@ -1009,9 +1135,11 @@ function renderItem(project, item) {
   clear.className = 'ghost';
   clear.textContent = 'Clear';
   clear.title = 'Unschedule — back to an open-ended todo';
-  clear.onclick = async () => {
-    await api('PATCH', '/api/items/' + item.id, { start_at: null, due_at: null });
-    load();
+  clear.onclick = () => {
+    optimistic(
+      () => { item.start_at = null; item.due_at = null; item.overdue = false; item.days_left = null; },
+      () => apiBg('PATCH', '/api/items/' + item.id, { start_at: null, due_at: null }),
+    );
   };
   const clearWrap = document.createElement('span');
   clearWrap.className = 'spacer';
@@ -1063,10 +1191,13 @@ function renderItem(project, item) {
   save.textContent = 'Save notes';
   const saved = document.createElement('span');
   saved.className = 'notes-saved';
-  save.onclick = async () => {
-    const r = await api('PATCH', '/api/items/' + item.id, { notes: ta.value });
-    item.notes = r.notes;
+  save.onclick = () => {
+    // No repaint here on purpose: the value is already in the textarea, so a
+    // render would only tear the caret out. Update the model and sync in the bg.
+    const v = ta.value;
+    item.notes = v;
     saved.textContent = 'SAVED';
+    enqueueWrite(() => apiBg('PATCH', '/api/items/' + item.id, { notes: v }));
   };
   ta.oninput = () => { saved.textContent = ''; };
   foot.append(save, saved);
@@ -1088,21 +1219,25 @@ function addItemForm(project, key) {
   btn.type = 'submit';
   form.append(input, btn);
   addInputs.set(key, input);
-  form.onsubmit = async e => {
+  form.onsubmit = e => {
     e.preventDefault();
     const v = input.value.trim();
     if (!v) { input.focus(); return; }
     input.value = '';   // cleared up front so keys struck during the save aren't mixed into it
     focusAddId = key;
-    try {
-      await api('POST', '/api/projects/' + project.id + '/items', { text: v });
-    } catch (err) {
-      if (!input.value) input.value = v;   // save failed — hand the text back
-      focusAddId = null;
-      input.focus();
-      throw err;
-    }
-    load();
+    // The row appears instantly with a temp id; when the POST returns we graft the
+    // real id onto the same object, so a later edit (or a quick check-off) that
+    // queued behind this create targets the right item.
+    const stub = newItemStub(v, project);
+    optimistic(
+      () => { project.items.push(stub); recomputeProject(project); },
+      async () => {
+        const real = await apiBg('POST', '/api/projects/' + project.id + '/items', { text: v });
+        stub.id = real.id;
+        stub.created_at = real.created_at;
+        stub.pos = real.pos;
+      },
+    );
   };
   return form;
 }
@@ -1413,10 +1548,16 @@ function renderCard(project) {
       if (e.key === 'Enter') inp.blur();
       if (e.key === 'Escape') { inp.value = project.title; inp.blur(); }
     };
-    inp.onblur = async () => {
+    inp.onblur = () => {
       const v = inp.value.trim();
-      if (v && v !== project.title) await api('PATCH', '/api/projects/' + project.id, { title: v });
-      load();
+      if (v && v !== project.title) {
+        optimistic(
+          () => { project.title = v; },
+          () => apiBg('PATCH', '/api/projects/' + project.id, { title: v }),
+        );
+      } else {
+        render();   // no change — restore the title node in place of the input
+      }
     };
     head.replaceChild(inp, title);
     inp.focus(); inp.select();
@@ -1476,20 +1617,28 @@ function renderCard(project) {
   cityTog.className = 'ghost city-tog ' + (project.render_progress ? 'on' : 'off');
   cityTog.textContent = project.render_progress ? 'City: on' : 'City: off';
   cityTog.title = 'Render this project\'s progress on the city map';
-  cityTog.onclick = async () => {
-    await api('PATCH', '/api/projects/' + project.id, { render_progress: !project.render_progress });
-    load();
+  cityTog.onclick = () => {
+    const want = !project.render_progress;
+    optimistic(
+      () => { project.render_progress = want; },
+      () => apiBg('PATCH', '/api/projects/' + project.id, { render_progress: want }),
+    );
   };
   foot.append(cityTog);
 
   const delP = document.createElement('button');
   delP.className = 'danger ghost';
   delP.textContent = 'Demolish project';
-  delP.onclick = async () => {
+  delP.onclick = () => {
     if (!confirm('Demolish "' + project.title + '" and all its items?')) return;
-    await api('DELETE', '/api/projects/' + project.id);
-    if (selectedCard === project.id) selectedCard = null;
-    load();
+    optimistic(
+      () => {
+        projects = projects.filter(p => p.id !== project.id);
+        if (selectedCard === project.id) selectedCard = null;
+        project.items.forEach(i => openNotes.delete(i.id));
+      },
+      () => apiBg('DELETE', '/api/projects/' + project.id),
+    );
   };
   foot.append(delP);
   card.append(foot);
@@ -1761,10 +1910,16 @@ function renderModal() {
       if (e.key === 'Enter') inp.blur();
       if (e.key === 'Escape') { inp.value = project.title; inp.blur(); }
     };
-    inp.onblur = async () => {
+    inp.onblur = () => {
       const v = inp.value.trim();
-      if (v && v !== project.title) await api('PATCH', '/api/projects/' + project.id, { title: v });
-      load();
+      if (v && v !== project.title) {
+        optimistic(
+          () => { project.title = v; },
+          () => apiBg('PATCH', '/api/projects/' + project.id, { title: v }),
+        );
+      } else {
+        render();   // no change — restore the title node in place of the input
+      }
     };
     titlewrap.replaceChild(inp, title);
     inp.focus(); inp.select();
@@ -1869,17 +2024,25 @@ function renderModal() {
   const cityTog = el('button', 'ghost city-tog ' + (project.render_progress ? 'on' : 'off'),
     project.render_progress ? 'City: on' : 'City: off');
   cityTog.title = 'Render this project\'s progress on the city map';
-  cityTog.onclick = async () => {
-    await api('PATCH', '/api/projects/' + project.id, { render_progress: !project.render_progress });
-    load();
+  cityTog.onclick = () => {
+    const want = !project.render_progress;
+    optimistic(
+      () => { project.render_progress = want; },
+      () => apiBg('PATCH', '/api/projects/' + project.id, { render_progress: want }),
+    );
   };
   const delP = el('button', 'danger ghost', 'Demolish project');
-  delP.onclick = async () => {
+  delP.onclick = () => {
     if (!confirm('Demolish "' + project.title + '" and all its items?')) return;
-    await api('DELETE', '/api/projects/' + project.id);
-    if (selectedCard === project.id) selectedCard = null;
-    modalPid = null;   // the modal's subject is gone; renderModal() would close it anyway
-    load();
+    optimistic(
+      () => {
+        projects = projects.filter(p => p.id !== project.id);
+        if (selectedCard === project.id) selectedCard = null;
+        modalPid = null;   // the modal's subject is gone; renderModal() would close it anyway
+        project.items.forEach(i => openNotes.delete(i.id));
+      },
+      () => apiBg('DELETE', '/api/projects/' + project.id),
+    );
   };
   acts.append(cityLink, cityTog, delP);
   side.append(acts);
@@ -2002,16 +2165,28 @@ function focusFromHash() {
 }
 window.addEventListener('hashchange', focusFromHash);
 
-document.getElementById('newForm').onsubmit = async e => {
+document.getElementById('newForm').onsubmit = e => {
   e.preventDefault();
   const inp = document.getElementById('newTitle');
   const v = inp.value.trim();
   if (!v) return;
-  const p = await api('POST', '/api/projects', { title: v });
   inp.value = '';
-  selectedCard = p.id;
-  focusAddId = p.id;   // land in the new project's item box, ready to type items
-  load();
+  const stub = newProjectStub(v);
+  selectedCard = stub.id;
+  focusAddId = stub.id;   // land in the new project's item box, ready to type items
+  optimistic(
+    () => { projects.push(stub); },
+    async () => {
+      const real = await apiBg('POST', '/api/projects', { title: v });
+      // Graft the real id on before any queued item-adds send, and carry the
+      // selection/focus over if they still point at the stub.
+      const wasSel = selectedCard === stub.id, wasFocus = focusAddId === stub.id;
+      stub.id = real.id;
+      stub.pos = real.pos;
+      if (wasSel) selectedCard = real.id;
+      if (wasFocus) focusAddId = real.id;
+    },
+  );
 };
 
 load();  // load() now handles the arrival hash (#p<id>) itself; hashchange still routes via focusFromHash
