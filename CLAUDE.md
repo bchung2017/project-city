@@ -18,7 +18,9 @@ serve time so the source files stay pristine.
 - `main/migrate_sqlite_to_pg.py` — one-off SQLite→Postgres migration helper.
 - `render.yaml` — Render service definition (build/start commands, env vars).
 - `.github/workflows/keepalive.yml` — pings `/healthz` to keep Render + Supabase awake.
-- `context/skyscraper.md` — design notes.
+- `context/skyscraper.md` — design notes (project → building mapping).
+- `context/world-systems.md` — city-visualizer seed/context: chunked terrain, river,
+  bridges, async lighting (companion to the PROJECT CITY seed; constants may have drifted).
 
 ## Running locally
 
