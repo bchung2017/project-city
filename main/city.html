@@ -3671,15 +3671,24 @@
       const groundLayer = [null, null];
       let fallRects = [];
 
-      function buildGround() {
-        const W = window.innerWidth,
-          H = window.innerHeight;
-        cv.width = W;
-        cv.height = H;
-        // The skyline is headroom the fit has to pay for: as project towers gain
-        // stories the whole map scales down so they stay in frame. Quarter steps
-        // keep every tile dimension whole (TW/2, TH/2 and EH all divide by 4),
-        // so the pixel grid survives the zoom.
+      // ---- camera: pan + zoom -------------------------------------------------
+      // The district is fit on first build; the viewer can then DRAG to pan and
+      // WHEEL to zoom (quarter-step snapped, per the seam invariant) out to the
+      // biome ring and back. Only the ground is pre-baked at the camera offset —
+      // sprites already draw through (ox,oy,s), so they pan/zoom for free. The
+      // baked ground layer is oversized by MARGIN on every side, so a same-scale
+      // pan is a lossless bitmap shift of the cache (no rebake, no seams) until it
+      // nears the edge; then a rebake recentres it. A zoom changes scale, so it
+      // always rebakes. Baking still happens at the (quarter-snapped) camera scale,
+      // but only on settle/zoom, never per pan frame — so no stall while dragging.
+      const MARGIN = 340; // px of baked ground beyond each screen edge
+      let cam = null; // {s, ox, oy} live camera; null until the first fit
+      let baked = null; // {s, ox, oy} the offset groundLayer was last baked at
+      let groundDirty = false; // request a rebake before the next frame
+
+      // Frame the district (not the whole map): the city fills the screen, and the
+      // surrounding biomes are discovered by panning/zooming out.
+      function fitDistrict(W, H) {
         const raw = Math.min(
           W / (CITY * TW + 68),
           H / (CITY * TH + 96 + skylinePx),
@@ -3687,16 +3696,58 @@
         const s = Math.max(0.25, Math.floor(raw * 4) / 4);
         const ccx = CX0 + CITY / 2,
           ccy = CY0 + CITY / 2;
-        const ox = Math.round(W / 2 - (ccx - ccy) * (TW / 2) * s);
-        const oy = Math.round(
-          H / 2 - (ccx + ccy) * (TH / 2) * s + (skylinePx * s) / 2,
+        return {
+          s,
+          ox: Math.round(W / 2 - (ccx - ccy) * (TW / 2) * s),
+          oy: Math.round(
+            H / 2 - (ccx + ccy) * (TH / 2) * s + (skylinePx * s) / 2,
+          ),
+        };
+      }
+      // Zoom out far enough to take in the whole extended map incl. biomes.
+      function minScale(W, H) {
+        const raw = Math.min(
+          W / ((MW + MH) * (TW / 2) + 60),
+          H / ((MW + MH) * (TH / 2) + 60),
         );
-        VP = { W, H, s, ox, oy };
+        return Math.max(0.25, Math.floor(raw * 4) / 4);
+      }
+      const MAX_SCALE = 2;
+      // Keep the map overlapping the viewport — you can pan the biomes to the edge
+      // but never fling the whole world into the void.
+      function clampCam() {
+        const W = VP.W,
+          H = VP.H,
+          hw = (TW / 2) * cam.s,
+          hh = (TH / 2) * cam.s,
+          PAD = 140;
+        cam.ox = Math.max(
+          PAD - (MW - 1) * hw,
+          Math.min(W - PAD + (MH - 1) * hw, cam.ox),
+        );
+        cam.oy = Math.max(
+          PAD - (MW + MH - 2) * hh,
+          Math.min(H - PAD, cam.oy),
+        );
+      }
+
+      // Rasterize the ground at the current camera into an oversized (screen +
+      // 2*MARGIN) layer per phase. Waterfall strips are stored in tile coords and
+      // projected each frame so they track pan/zoom.
+      function bakeGround() {
+        const W = VP.W,
+          H = VP.H,
+          s = cam.s;
+        const ox = cam.ox + MARGIN,
+          oy = cam.oy + MARGIN,
+          LW = W + 2 * MARGIN,
+          LH = H + 2 * MARGIN;
+        baked = { s, ox: cam.ox, oy: cam.oy };
         fallRects = [];
         for (let ph = 0; ph < 2; ph++) {
           const c = document.createElement("canvas");
-          c.width = W;
-          c.height = H;
+          c.width = LW;
+          c.height = LH;
           const g = c.getContext("2d");
           g.imageSmoothingEnabled = false;
           for (let d = 0; d <= MW + MH - 2; d++)
@@ -3710,9 +3761,9 @@
                 Y = oy + (x + y) * (TH / 2) * s - elev[y][x] * EH * s;
               if (
                 X + TW * s < 0 ||
-                X > W ||
+                X > LW ||
                 Y + (TH + elev[y][x] * EH) * s < 0 ||
-                Y > H
+                Y > LH
               )
                 continue;
               if (elev[y][x] > 0) {
@@ -3721,42 +3772,68 @@
                   // Only the strip of skirt that clears the tile in front is on
                   // screen; the rest is buried under terrain drawn later. The
                   // halves are hidden by different neighbours -- left by (x,y+1),
-                  // right by (x+1,y) -- so each gets its own exposed height, and
-                  // water is drawn on those alone. Flat stretches of the river
-                  // bury their skirt entirely and carry no falling water.
+                  // right by (x+1,y) -- so each gets its own exposed height.
                   const e = elev[y][x];
-                  const expL =
-                    Math.max(0, e - ((elev[y + 1] || [])[x] || 0)) * EH * s;
-                  const expR = Math.max(0, e - (elev[y][x + 1] || 0)) * EH * s;
-                  if (expL > 0 || expR > 0)
-                    fallRects.push({ X, Y, expL, expR });
+                  const dL = Math.max(0, e - ((elev[y + 1] || [])[x] || 0));
+                  const dR = Math.max(0, e - (elev[y][x + 1] || 0));
+                  if (dL > 0 || dR > 0) fallRects.push({ x, y, dL, dR });
                 }
               }
               g.drawImage(tiles[ground[y][x] + "#" + ph], X, Y, TW * s, TH * s);
             }
           groundLayer[ph] = c;
         }
+        groundDirty = false;
+      }
+
+      function buildGround() {
+        const W = window.innerWidth,
+          H = window.innerHeight;
+        cv.width = W;
+        cv.height = H;
+        cv.style.touchAction = "none"; // let a touch-drag pan instead of scroll
+        if (!cam) cam = fitDistrict(W, H); // first build only — never yank the view
+        VP = { W, H, s: cam.s, ox: cam.ox, oy: cam.oy };
+        clampCam();
+        bakeGround();
       }
 
       function draw(tms) {
+        VP.s = cam.s; // the camera can move between bakes; the sprite pass and
+        VP.ox = cam.ox; // picking read VP, so keep it in lockstep with cam.
+        VP.oy = cam.oy;
         const { s, ox, oy } = VP;
         const slow = Math.floor(tms / 280);
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(groundLayer[slow & 1], 0, 0);
+        // Void backdrop under any over-pan (the map no longer fills the screen).
+        ctx.fillStyle = "#062a2b";
+        ctx.fillRect(0, 0, VP.W, VP.H);
+        // Blit the oversized baked ground, shifted by how far the camera has moved
+        // since it was baked — a same-scale pan is a lossless bitmap translate.
+        ctx.drawImage(
+          groundLayer[slow & 1],
+          Math.round(ox - baked.ox - MARGIN),
+          Math.round(oy - baked.oy - MARGIN),
+        );
 
         ctx.fillStyle = COL.foam; // waterfall: smooth fall, clipped to the visible face
-        for (const r of fallRects)
+        for (const r of fallRects) {
+          const rX = ox + (r.x - r.y) * (TW / 2) * s,
+            rY = oy + (r.x + r.y) * (TH / 2) * s - elev[r.y][r.x] * EH * s,
+            expL = r.dL * EH * s,
+            expR = r.dR * EH * s;
           for (let i = 2; i < TW; i += 5) {
-            const h = i < TW / 2 ? r.expL : r.expR;
+            const h = i < TW / 2 ? expL : expR;
             if (h <= 0) continue;
             const off = (i * 7 * s + tms * 0.05 * s) % h;
             ctx.fillRect(
-              Math.round(r.X + i * s),
-              Math.round(r.Y + (edgeY(i) + 1) * s + off),
+              Math.round(rX + i * s),
+              Math.round(rY + (edgeY(i) + 1) * s + off),
               Math.max(1, Math.round(s)),
               Math.min(Math.max(1, Math.round(2 * s)), h - off),
             );
           }
+        }
 
         const sx = (x, y) => ox + (x - y) * (TW / 2) * s;
         const sy = (x, y) => oy + (x + y) * (TH / 2) * s;
@@ -4006,18 +4083,59 @@
         $pcc.style.display = "block";
       }
 
+      // ---- pointer: hover-pick + drag-pan, wheel-zoom -------------------------
+      // One pointer does double duty: a press-and-move pans the camera, a press
+      // that doesn't move is a click (hover/navigate to the project). The drag
+      // threshold keeps a slightly-shaky click from being read as a pan.
+      let dragging = false,
+        dragMoved = false,
+        lastX = 0,
+        lastY = 0;
       if (cv.addEventListener) {
-        cv.addEventListener("mousemove", (e) => {
+        cv.addEventListener("pointerdown", (e) => {
+          dragging = true;
+          dragMoved = false;
+          lastX = e.clientX;
+          lastY = e.clientY;
+          try {
+            cv.setPointerCapture(e.pointerId);
+          } catch (_) {}
+          cv.style.cursor = "grabbing";
+        });
+        cv.addEventListener("pointermove", (e) => {
+          if (dragging) {
+            const dx = e.clientX - lastX,
+              dy = e.clientY - lastY;
+            if (Math.abs(dx) + Math.abs(dy) > 3) dragMoved = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            cam.ox += dx;
+            cam.oy += dy;
+            clampCam();
+            // Rebake before the pan reaches the baked margin, or the edge shows void.
+            if (
+              Math.abs(cam.ox - baked.ox) > MARGIN * 0.7 ||
+              Math.abs(cam.oy - baked.oy) > MARGIN * 0.7
+            )
+              groundDirty = true;
+            return;
+          }
           const t = pickTower(e.clientX, e.clientY);
           const pid = t ? t.pid : null;
           if (pid !== null && pid !== pinPid) pinPid = null; // hover supersedes the link
           hoverPid = pid;
-          cv.style.cursor = pid !== null ? "pointer" : "";
+          cv.style.cursor = pid !== null ? "pointer" : "grab";
         });
-        cv.addEventListener("mouseleave", () => {
-          hoverPid = null;
-        });
-        cv.addEventListener("click", (e) => {
+        const endDrag = () => {
+          if (!dragging) return;
+          dragging = false;
+          cv.style.cursor = "grab";
+          groundDirty = true; // recentre the oversized margin for the next drag
+        };
+        cv.addEventListener("pointerup", (e) => {
+          const wasDrag = dragMoved;
+          endDrag();
+          if (wasDrag) return; // a pan, not a click — don't navigate
           const t = pickTower(e.clientX, e.clientY);
           if (t) {
             location.href = "/#p" + t.pid; // hand off to the list page
@@ -4025,6 +4143,30 @@
           }
           pinPid = null;
         });
+        cv.addEventListener("pointercancel", endDrag);
+        cv.addEventListener("pointerleave", () => {
+          if (!dragging) hoverPid = null;
+        });
+        cv.addEventListener(
+          "wheel",
+          (e) => {
+            e.preventDefault();
+            const raw = cam.s * (e.deltaY < 0 ? 1.25 : 0.8);
+            const ns = Math.max(
+              minScale(VP.W, VP.H),
+              Math.min(MAX_SCALE, Math.max(0.25, Math.floor(raw * 4) / 4)),
+            );
+            if (ns === cam.s) return;
+            // Zoom toward the cursor: keep the world point under the mouse fixed.
+            const k = ns / cam.s;
+            cam.ox = e.clientX - (e.clientX - cam.ox) * k;
+            cam.oy = e.clientY - (e.clientY - cam.oy) * k;
+            cam.s = ns;
+            clampCam();
+            groundDirty = true; // scale changed — the cache must be re-rasterized
+          },
+          { passive: false },
+        );
       }
       window.addEventListener("hashchange", () => {
         pinPid = hashPid();
@@ -4033,6 +4175,7 @@
       window.addEventListener("resize", buildGround);
       buildGround();
       requestAnimationFrame(function loop(t) {
+        if (groundDirty) bakeGround(); // coalesce pan/zoom rebakes to one per frame
         draw(t);
         requestAnimationFrame(loop);
       });
