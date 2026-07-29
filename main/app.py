@@ -177,8 +177,7 @@ CREATE TABLE IF NOT EXISTS projects (
   render_progress INTEGER NOT NULL DEFAULT 1,
   logo TEXT NOT NULL DEFAULT '',
   logo_src TEXT NOT NULL DEFAULT '',
-  logo_size INTEGER NOT NULL DEFAULT 32,
-  profile TEXT NOT NULL DEFAULT 'personal'
+  logo_size INTEGER NOT NULL DEFAULT 32
 );
 CREATE TABLE IF NOT EXISTS items (
   id SERIAL PRIMARY KEY,
@@ -255,30 +254,7 @@ MIGRATIONS = [
     ("projects", "logo", "TEXT NOT NULL DEFAULT ''", None),
     ("projects", "logo_src", "TEXT NOT NULL DEFAULT ''", None),
     ("projects", "logo_size", "INTEGER NOT NULL DEFAULT 32", None),
-    # Baked profiles: a project belongs to one profile. Existing rows backfill to
-    # 'personal', so all pre-existing data becomes the Personal profile; the Work
-    # profile simply starts with no rows (blank city) until projects are created
-    # while it is active. Items/tags cascade from projects, so scoping the project
-    # by profile scopes the whole tree — the two profiles' data never mix.
-    ("projects", "profile", "TEXT NOT NULL DEFAULT 'personal'", None),
 ]
-
-# ---- profiles (baked; no CRUD yet) -----------------------------------------
-# Two fixed profiles the user switches between from the right-side nav. The active
-# one lives in the signed session cookie, so it survives reloads and is known both
-# to the API (which scopes every project query by it) and to the nav renderer.
-PROFILES = [
-    {"key": "personal", "label": "Personal"},
-    {"key": "work", "label": "Work"},
-]
-PROFILE_KEYS = {p["key"] for p in PROFILES}
-DEFAULT_PROFILE = "personal"
-
-
-def current_profile():
-    p = session.get("profile", DEFAULT_PROFILE)
-    return p if p in PROFILE_KEYS else DEFAULT_PROFILE
-
 
 NAV_CSS = """
 #pcnav { position: fixed; top: 34px; right: 14px; z-index: 50;
@@ -310,7 +286,6 @@ def nav_snippet(active):
         f'<div class="pcnav-cap">Project City</div>'
         f'<a href="/"{cls("projects")}>Projects</a>'
         f'<a href="/city"{cls("city")}>City</a>'
-        f'<a href="/profiles"{cls("profiles")}>Profiles</a>'
         f"</div>\n"
     )
 
@@ -354,7 +329,7 @@ LOADING_HEAD = """<style>
 <script>
 (function(){
   "use strict";
-  var SC="pc:projects:v1:__PROFILE__";  // key is per-profile so switching profiles never serves the other's snapshot
+  var SC="pc:projects:v1";      // per-session cache key for the projects snapshot
   var gen=0;                    // mutation generation (bumped on every write INITIATE)
   var inflight=0;              // writes currently open — a GET overlapping any is never cached
   var primed=false;            // has the first /api/projects GET been served?
@@ -442,8 +417,7 @@ def serve_page(filename, active):
     # Loading overlay + cache: the <script> must install before the app's own
     # scripts run, so it goes in <head>; the overlay div goes first in <body> so it
     # paints over everything from the very first frame.
-    loading_head = LOADING_HEAD.replace("__PROFILE__", current_profile())
-    html = html.replace("<head>", "<head>\n" + loading_head, 1)
+    html = html.replace("<head>", "<head>\n" + LOADING_HEAD, 1)
     body_m = re.search(r"<body[^>]*>", html)
     if body_m:
         html = html[: body_m.end()] + "\n" + LOADING_BODY + html[body_m.end():]
@@ -775,59 +749,6 @@ def city():
     return serve_page(CITY_FILE, "city")
 
 
-# ---- profiles page + switcher ----------------------------------------------
-# Baked demo: two fixed profiles, no CRUD. The Profiles tab lands here; picking a
-# profile sets it active in the session and drops you back into the Projects view,
-# now scoped to that profile's data (the city, which polls /api/projects, follows).
-PROFILES_HTML = """<!doctype html><meta charset=utf-8>
-<title>PROJECT CITY — PROFILES</title>
-<style>
-  body{margin:0;min-height:100vh;background:#0E7C9B;color:#08313F;
-       font:14px/1.4 ui-monospace,Menlo,Consolas,monospace;
-       display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:40px}
-  h1{margin:0;font-size:15px;letter-spacing:.18em;color:#F4EFE2;text-shadow:2px 2px 0 #08313F}
-  .cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
-  a.card{display:flex;flex-direction:column;gap:8px;min-width:200px;
-         background:#F4EFE2;border:4px solid #08313F;box-shadow:6px 6px 0 #08313F;
-         padding:22px;text-decoration:none;color:#08313F}
-  a.card:hover{background:#FFCC0F}
-  a.card.active{background:#FFCC0F;box-shadow:inset 6px 0 0 #F02D0E,6px 6px 0 #08313F}
-  .name{font-weight:700;letter-spacing:.14em;font-size:15px}
-  .state{font-size:11px;letter-spacing:.16em;color:#08313F;opacity:.75}
-  .active .state{color:#F02D0E;opacity:1;font-weight:700}
-  .hint{font-size:11px;letter-spacing:.14em;color:#F4EFE2;opacity:.85}
-</style>
-<h1>■ PROFILES</h1>
-<div class=cards>
-  {% for p in profiles %}
-  <a class="card{{ ' active' if p.key == current else '' }}" href="/profile/{{ p.key }}">
-    <span class=name>{{ p.label }}</span>
-    <span class=state>{{ 'ACTIVE' if p.key == current else 'SWITCH' }}</span>
-  </a>
-  {% endfor %}
-</div>
-<div class=hint>PICK A PROFILE — ITS PROJECTS AND CITY ARE KEPT SEPARATE</div>
-{{ nav|safe }}"""
-
-
-@app.get("/profiles")
-def profiles_page():
-    return render_template_string(
-        PROFILES_HTML,
-        profiles=PROFILES,
-        current=current_profile(),
-        nav=nav_snippet("profiles"),
-    )
-
-
-@app.get("/profile/<name>")
-def switch_profile(name):
-    # Set the active profile (ignoring anything not baked) and return to the app.
-    if name in PROFILE_KEYS:
-        session["profile"] = name
-    return redirect(url_for("index"))
-
-
 @app.get("/healthz")
 def healthz():
     # Unauthenticated liveness probe (exempted in require_login). The one trivial
@@ -840,14 +761,14 @@ def healthz():
 
 @app.get("/api/projects")
 def list_projects():
-    # Bulk-loaded to stay flat in the project count: a profile with dozens of
-    # projects (the baked Work city has ~85) once ran 1 + 3*N queries here — items,
-    # tags and item_tags per project — which, over a remote pooled connection, took
-    # seconds and made the city's 4s poll fall behind and hang. Now it's a constant
-    # 4 queries regardless of N; assembly happens in Python.
+    # Bulk-loaded to stay flat in the project count: a city with dozens of projects
+    # once ran 1 + 3*N queries here — items, tags and item_tags per project — which,
+    # over a remote pooled connection, took seconds and made the city's 4s poll fall
+    # behind and hang. Now it's a constant 4 queries regardless of N; assembly
+    # happens in Python.
     d = db()
     projects = d.execute(
-        "SELECT * FROM projects WHERE profile = %s ORDER BY pos, id", (current_profile(),)
+        "SELECT * FROM projects ORDER BY pos, id"
     ).fetchall()
     if not projects:
         return jsonify([])
@@ -895,16 +816,14 @@ def create_project():
     if not title:
         return jsonify({"error": "title required"}), 400
     d = db()
-    prof = current_profile()
-    # pos is per-profile so each profile's ordering is independent.
     pos = d.execute(
-        "SELECT COALESCE(MAX(pos), -1) + 1 AS pos FROM projects WHERE profile = %s", (prof,)
+        "SELECT COALESCE(MAX(pos), -1) + 1 AS pos FROM projects"
     ).fetchone()["pos"]
     # dict_row rows index by name, and Postgres has no lastrowid — RETURNING hands
     # back the freshly assigned SERIAL id in the same round trip.
     row = d.execute(
-        "INSERT INTO projects (title, pos, profile) VALUES (%s, %s, %s) RETURNING *",
-        (title, pos, prof),
+        "INSERT INTO projects (title, pos) VALUES (%s, %s) RETURNING *",
+        (title, pos),
     ).fetchone()
     d.commit()
     return jsonify(project_json(row, [])), 201

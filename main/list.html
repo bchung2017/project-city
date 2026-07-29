@@ -1938,7 +1938,7 @@ document.addEventListener('keydown', e => {
 
 let projects = [];
 // Building the full grid is the expensive part on a large city — one card per
-// project (~85 on the Work profile). Split out so arriving from a city building
+// project (dozens on a busy city). Split out so arriving from a city building
 // can paint the clicked project's modal first and build the grid behind it.
 function renderGrid() {
   $grid.replaceChildren(...projects.map(renderCard));

@@ -36,5 +36,5 @@ jobs:
 
       - name: Syntax-check helper scripts
         run: |
-          python -m py_compile main/load_work_profile.py main/migrate_sqlite_to_pg.py
+          python -m py_compile main/migrate_sqlite_to_pg.py
           echo "helper scripts compile OK"

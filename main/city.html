@@ -3451,7 +3451,7 @@
       // those sprites across all cranes, instead of redrawing each crane live every
       // frame. At 3-deg steps the motion still reads as smooth, but a city of ~85
       // cranes costs a per-step bake (once) plus a cache lookup per frame, not ~85
-      // full jib redraws per frame — which is what froze the Work-profile city.
+      // full jib redraws per frame — which is what once froze a large city.
       const NSLEW = 120;
       const SLEW_STEP = (2 * Math.PI) / NSLEW;
       function slewSprite(step, ph) {

@@ -15,7 +15,6 @@ serve time so the source files stay pristine.
 
 - `main/app.py` — the entire backend (Flask). All routes, auth, and DB access.
 - `main/list.html`, `main/city.html` — the two views (large, hand-authored).
-- `main/work_profile.json` + `main/load_work_profile.py` — a baked demo profile.
 - `main/migrate_sqlite_to_pg.py` — one-off SQLite→Postgres migration helper.
 - `render.yaml` — Render service definition (build/start commands, env vars).
 - `.github/workflows/keepalive.yml` — pings `/healthz` to keep Render + Supabase awake.
