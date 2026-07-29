@@ -678,6 +678,44 @@
         P(g, COL.trunk, 16, 15, 3, 3);
         P(g, COL.trunkD, 19, 15, 3, 3);
       });
+      // desert: saguaro cactus (arms sway on the phase clock, like the trees) and
+      // a low sage bush. Both are upright, shadow-anchored, centred on their tile.
+      def("cactus", 24, 32, (g, ph) => {
+        const CB = "#4E8C43",
+          CH = "#74B356",
+          CD = "#33642B",
+          FL = "#F0563A";
+        E(g, COL.sh, 12, 30, 7, 2); // shadow
+        // trunk
+        P(g, COL.out, 9, 7, 6, 23);
+        P(g, CB, 10, 8, 4, 22);
+        E(g, COL.out, 12, 8, 3, 2);
+        E(g, CB, 12, 8, 2, 2); // rounded crown
+        P(g, CD, 12, 9, 1, 21); // shaded ridge
+        P(g, CH, 10, 11, 1, 17); // lit ridge
+        // left arm (sways with ph), right arm sways opposite
+        const la = ph,
+          ra = -ph;
+        P(g, COL.out, 5 + la, 14, 4, 9);
+        P(g, CB, 5 + la, 15, 2, 8);
+        P(g, COL.out, 5 + la, 14, 5, 2);
+        P(g, CB, 6 + la, 15, 3, 1);
+        P(g, CD, 5 + la, 16, 1, 6);
+        P(g, COL.out, 15 + ra, 11, 4, 10);
+        P(g, CB, 16 + ra, 12, 2, 9);
+        P(g, COL.out, 14 + ra, 11, 5, 2);
+        P(g, CB, 15 + ra, 12, 3, 1);
+        P(g, CH, 17 + ra, 13, 1, 6);
+        P(g, FL, 12, 6, 2, 1); // bloom
+        P(g, FL, 6 + la, 13, 1, 1);
+      });
+      def("sage", 16, 14, (g, ph) => {
+        E(g, COL.sh, 8, 13, 5, 1);
+        E(g, COL.out, 8 + ph, 8, 6, 4);
+        E(g, "#7C8B48", 8 + ph, 8, 5, 3);
+        E(g, "#98A85E", 7 + ph, 7, 3, 2);
+        P(g, "#5E6B36", 8, 10, 4, 1);
+      });
       // sprite name -> pixel column that sits over the object's tile centre
       const ANCHORX = {};
       // iso-box cars with shadows
@@ -2021,6 +2059,145 @@
       // the PRNG so every build is deterministic, and is re-run whenever the
       // project count needs a bigger (or smaller) grid — the city literally grows
       // blocks, up to 100. GRID=3 reproduces the original 96x72 map tile-for-tile.
+      // ---- surrounding biomes: a procedural ring around the tuned core -------
+      // The hand-authored map (mountains N, forest E, meadow W, coast S) is built
+      // first at its own size, then embedded into a grid grown by BIOME_PAD tiles
+      // on every side. The new ring is painted with biomes that pick up the core's
+      // direction at the seam and then dissolve into random patches farther out.
+      // Deterministic value-noise from hash(), so the wilds are identical every
+      // reload (the purity invariant) — the same clock that sways the core's trees
+      // sways these, so the whole idle environment breathes on the 280ms beat.
+      const BIOME_PAD = 26; // tiles of biome added on each side (20-30)
+      const vh = (ix, iy) => (hash(ix * 131 + 7, iy * 197 + 13) % 1000) / 1000;
+      function vnoise(x, y) {
+        // smooth low-frequency value noise, ~8-tile cells
+        const F = 8,
+          gx = x / F,
+          gy = y / F;
+        const x0 = Math.floor(gx),
+          y0 = Math.floor(gy);
+        const fx = gx - x0,
+          fy = gy - y0;
+        const a = vh(x0, y0),
+          b = vh(x0 + 1, y0),
+          c = vh(x0, y0 + 1),
+          d = vh(x0 + 1, y0 + 1);
+        const sx = fx * fx * (3 - 2 * fx),
+          sy = fy * fy * (3 - 2 * fy);
+        const ab = a + (b - a) * sx,
+          cd = c + (d - c) * sx;
+        return ab + (cd - ab) * sy;
+      }
+      // Which biome a ring tile takes: directional near the core, random far out.
+      function ringBiome(x, y, ix0, iy0, ix1, iy1) {
+        const nd = iy0 - y,
+          sd = y - iy1,
+          wd = ix0 - x,
+          ed = x - ix1;
+        const dp = Math.max(nd, sd, wd, ed);
+        if (dp <= 0) return null; // inside the embedded core
+        if (sd === dp) return { kind: "sea", dp }; // south of the beach: open water
+        const half = Math.round(BIOME_PAD * 0.45);
+        let kind = nd === dp ? "mountain" : wd === dp ? "desert" : "forest";
+        let elevated = nd === dp && dp <= half; // only the north band builds peaks
+        if (dp > half) {
+          // beyond the directional band the biomes break into random patches
+          const r = vnoise(x + 11, y - 7);
+          kind = r < 0.36 ? "forest" : r < 0.66 ? "desert" : "mountain";
+          elevated = false;
+        } else if (dp > 4 && vnoise(x + 40, y + 40) > 0.74) {
+          kind = ["forest", "desert", "mountain"][(hash(x, y) >> 4) % 3];
+          elevated = false;
+        }
+        return { kind, dp, elevated };
+      }
+      function paintBiomes(ix0, iy0, ix1, iy1) {
+        for (let y = 0; y < MH; y++)
+          for (let x = 0; x < MW; x++) {
+            if (ground[y][x] !== null) continue; // core tile, already set
+            const b = ringBiome(x, y, ix0, iy0, ix1, iy1);
+            if (!b) {
+              ground[y][x] = "g" + (hash(x, y) % 3);
+              continue;
+            }
+            if (b.kind === "sea") {
+              ground[y][x] = "w" + (hash(x, y) % 2); // extend the open ocean
+            } else if (b.kind === "mountain") {
+              if (b.elevated) {
+                // ramp up from the core's ridge foot so the range recedes north
+                const cx = Math.max(ix0, Math.min(ix1, x));
+                const foot = (elev[iy0] || [])[cx] || 1;
+                const e = Math.max(
+                  1,
+                  Math.min(9, foot + Math.floor(b.dp * 0.4) + (hash(x, y) % 2)),
+                );
+                elev[y][x] = e;
+                skirt[y][x] = "rock";
+                ground[y][x] =
+                  e >= 7
+                    ? hash(x, y) % 3
+                      ? "sn"
+                      : "rk"
+                    : hash(x, y) % 4
+                      ? "rk"
+                      : "rkD";
+                if (hash(x, y) % 13 === 0) objs.push({ s: "boulder", x, y });
+              } else {
+                // rocky badlands: flat, so a random patch never cliffs a neighbour
+                ground[y][x] = hash(x, y) % 4 ? "rk" : "rkD";
+                if (hash(x, y) % 9 === 0) objs.push({ s: "boulder", x, y });
+              }
+            } else if (b.kind === "desert") {
+              ground[y][x] = "sd";
+              const h = hash(x, y) % 22;
+              if (h === 0) objs.push({ s: "cactus", x, y });
+              else if (h === 1) objs.push({ s: "sage", x, y });
+              else if (h === 2) objs.push({ s: "boulder", x, y });
+            } else {
+              // forest
+              ground[y][x] = "g" + (hash(x, y) % 3);
+              const h = hash(x, y) % 10;
+              if (h < 5) objs.push({ s: "tree", x, y });
+              else if (h === 5) objs.push({ s: "streetTree", x, y });
+              else if (h === 6)
+                objs.push({ s: ["bR", "bY", "bW"][hash(y, x) % 3], x, y });
+            }
+          }
+      }
+      // Embed the freshly-built core into a padded grid and paint the biome ring.
+      // Everything carrying a map coordinate shifts by BIOME_PAD in lockstep.
+      function embedBiomeRing() {
+        const B = BIOME_PAD,
+          oMW = MW,
+          oMH = MH;
+        MW = oMW + 2 * B;
+        MH = oMH + 2 * B;
+        const ng = Array.from({ length: MH }, () => new Array(MW).fill(null));
+        const ne = Array.from({ length: MH }, () => new Array(MW).fill(0));
+        const nk = Array.from({ length: MH }, () => new Array(MW).fill("rock"));
+        for (let y = 0; y < oMH; y++)
+          for (let x = 0; x < oMW; x++) {
+            ng[y + B][x + B] = ground[y][x];
+            ne[y + B][x + B] = elev[y][x];
+            nk[y + B][x + B] = skirt[y][x];
+          }
+        ground = ng;
+        elev = ne;
+        skirt = nk;
+        CX0 += B;
+        CY0 += B;
+        for (const o of objs) {
+          o.x += B;
+          o.y += B;
+        }
+        for (const p of PLOTS) {
+          p.px += B;
+          p.py += B;
+        }
+        paintBiomes(B, B, B + oMW - 1, B + oMH - 1);
+        occupied = new Set(objs.map((o) => o.x + "," + o.y));
+      }
+
       function buildCity(gridN) {
         GRID = gridN;
         CITY = GRID * PITCH + ROADW;
@@ -2583,6 +2760,7 @@
           objs.push({ s: "streetTree", x: x + 2, y });
       }
 
+      embedBiomeRing(); // grow the map and paint forest / desert / mountains
       objs.sort((a, b) => a.x + a.y - (b.x + b.y) || a.y - b.y);
       }
       buildCity(gridForCount(0));
