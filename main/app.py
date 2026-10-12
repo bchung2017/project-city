@@ -3,6 +3,7 @@
 # Views: /  project list (CRUD, list.html)   /city  city visualizer (city.html).
 # The right-side nav is injected at serve time so the source files stay pristine.
 import json
+import mimetypes
 import os
 import re
 import time
@@ -17,6 +18,8 @@ from flask import (
     redirect,
     render_template_string,
     request,
+    send_file,
+    send_from_directory,
     session,
     url_for,
 )
@@ -34,6 +37,11 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 DATABASE_URL = os.environ["DATABASE_URL"]
 LIST_FILE = os.path.join(BASE, "list.html")
 CITY_FILE = os.path.join(BASE, "city.html")
+PWA_DIR = os.path.join(BASE, "pwa")
+# Werkzeug doesn't know the .webmanifest extension and would serve it as
+# text/html, which strict browsers reject — register the spec MIME type so the
+# manifest validates and the app stays installable.
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 app = Flask(__name__)
 
 # ---- auth ------------------------------------------------------------------
@@ -88,6 +96,24 @@ def record_attempt(ip):
     _login_hits.setdefault(ip, []).append(time.time())
 
 
+# Injected into every served page (and the login screen) so the app is
+# installable from any entry point: links the manifest, sets the theme + iOS
+# home-screen chrome (iOS ignores the manifest for launch), and registers the
+# service worker on load.
+PWA_HEAD = """
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#073a3b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Project City">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<script>
+if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){})});}
+</script>
+"""
+
+
 LOGIN_HTML = """<!doctype html><meta charset=utf-8>
 <title>PROJECT CITY — LOGIN</title>
 <style>
@@ -138,7 +164,10 @@ def login():
             return redirect(request.args.get("next") or url_for("index"))
         record_attempt(ip)
         return _login_bounce(nxt, "pw")
-    return render_template_string(LOGIN_HTML, error=LOGIN_ERRORS.get(request.args.get("err")))
+    return render_template_string(
+        LOGIN_HTML.replace("</title>", "</title>" + PWA_HEAD),
+        error=LOGIN_ERRORS.get(request.args.get("err")),
+    )
 
 
 @app.route("/logout", methods=["POST"])
@@ -149,7 +178,18 @@ def logout():
 
 @app.before_request
 def require_login():
-    if session.get("ok") or request.endpoint in ("login", "static", "healthz"):
+    if session.get("ok") or request.endpoint in (
+        "login",
+        "static",
+        "healthz",
+        # PWA assets must serve publicly — the browser fetches the manifest, SW
+        # and icons before (and without) a session, and a login redirect here
+        # would make the app non-installable.
+        "manifest",
+        "service_worker",
+        "offline",
+        "pwa_icon",
+    ):
         return
     # The API answers 401 so fetch() sees a real failure instead of parsing a
     # login page as JSON.
@@ -417,7 +457,7 @@ def serve_page(filename, active):
     # Loading overlay + cache: the <script> must install before the app's own
     # scripts run, so it goes in <head>; the overlay div goes first in <body> so it
     # paints over everything from the very first frame.
-    html = html.replace("<head>", "<head>\n" + LOADING_HEAD, 1)
+    html = html.replace("<head>", "<head>\n" + PWA_HEAD + LOADING_HEAD, 1)
     body_m = re.search(r"<body[^>]*>", html)
     if body_m:
         html = html[: body_m.end()] + "\n" + LOADING_BODY + html[body_m.end():]
@@ -425,6 +465,38 @@ def serve_page(filename, active):
         return html.replace("{{ nav|safe }}", nav)
     idx = html.rfind("</body>")
     return html + nav if idx == -1 else html[:idx] + nav + html[idx:]
+
+
+# ---- PWA: manifest, service worker, icons, offline shell -------------------
+# Served from the origin root (not /static/) so the manifest's root-absolute
+# paths resolve and the service worker's scope is the whole site. All four are
+# login-exempt (see require_login) so the browser can install the app.
+@app.get("/manifest.webmanifest")
+def manifest():
+    return send_file(
+        os.path.join(PWA_DIR, "manifest.webmanifest"),
+        mimetype="application/manifest+json",
+    )
+
+
+@app.get("/sw.js")
+def service_worker():
+    # Service-Worker-Allowed + root path => scope "/". no-cache so a bumped
+    # worker is picked up on the next load instead of lingering.
+    resp = send_file(os.path.join(PWA_DIR, "sw.js"), mimetype="text/javascript")
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+@app.get("/offline.html")
+def offline():
+    return send_file(os.path.join(PWA_DIR, "offline.html"))
+
+
+@app.get("/icons/<path:name>")
+def pwa_icon(name):
+    return send_from_directory(os.path.join(PWA_DIR, "icons"), name)
 
 
 def db():
