@@ -263,11 +263,9 @@
     <div class="board">
       <div class="masthead">
         <h1>📌 The Board</h1>
-        <p>every project standing in the city — freshest to-do pinned on top. grab it at a glance.</p>
       </div>
       <div class="grid" id="grid"></div>
       <div class="empty" id="empty" hidden></div>
-      <div class="footer">— pinned with coffee &amp; good intentions · project city —</div>
     </div>
 
     <script>
@@ -381,25 +379,12 @@
           (total - done) +
           " open";
         meta.append(name, status);
-        if (p.tags && p.tags.length) {
-          const tags = document.createElement("div");
-          tags.className = "tags";
-          p.tags.slice(0, 4).forEach((t) => {
-            const c = document.createElement("span");
-            c.className = "tag";
-            c.style.background = t.color || "#8a764e";
-            c.textContent = t.name;
-            tags.append(c);
-          });
-          meta.append(tags);
-        }
         head.append(pic, meta);
 
+        // minimal card: just the latest to-do under the name + description, no
+        // labels/tags/counts — the whole point is instant perception.
         const latest = document.createElement("div");
         latest.className = "latest";
-        const lbl = document.createElement("div");
-        lbl.className = "lbl";
-        lbl.textContent = "📌 LATEST TO-DO";
         const it = latestItem(p.items);
         const todo = document.createElement("div");
         if (it) {
@@ -409,14 +394,7 @@
           todo.className = "none";
           todo.textContent = "— nothing on the list yet —";
         }
-        latest.append(lbl, todo);
-        const openOthers = total - done - (it && !it.done ? 1 : 0);
-        if (openOthers > 0) {
-          const more = document.createElement("div");
-          more.className = "more";
-          more.textContent = "+ " + openOthers + " more open to-do" + (openOthers === 1 ? "" : "s");
-          latest.append(more);
-        }
+        latest.append(todo);
 
         el.append(pin, head, latest);
         return el;
