@@ -3717,19 +3717,9 @@
           projObjs.push({ s: nm, x: px + 2.5, y: py + 2.5, dy: 8, pid: p.id }); // 3x3, centred
           skylinePx = Math.max(skylinePx, TOWER_PX[nm]);
 
-          const open = p.open | 0;
-          if (open > 0) {
-            // Cranes removed for a cleaner, more legible skyline. The remaining
-            // ground gear (scaffold, materials, barriers) still marks a lot as
-            // under construction without the tall occluding masts.
-            const G = lotGear(lot);
-            const eq = [];
-            if (open >= 2) eq.push(["pcScaff", ...G.scaff]);
-            if (open >= 3) eq.push(["pcMats", ...G.mats]);
-            for (let k = 0; k < Math.min(G.barriers.length, open - 1); k++)
-              eq.push(["pcBarrier", ...G.barriers[k]]);
-            for (const [s, x, y] of eq) projObjs.push({ s, x, y, dy: 6 });
-          }
+          // All construction gear (cranes, scaffold, materials, barriers) is
+          // omitted for a clean, legible skyline — a lot's progress reads from
+          // the tower's height, not clutter around its base.
         });
         // buildGround re-sizes the canvas, recomputes the zoom-to-fit and re-
         // rasterizes the whole static map — expensive. It only needs to run when the
@@ -4025,13 +4015,21 @@
             if (tiles[o.s + "@hi#0"]) lit = o.s + "@hi";
           }
           const nm = lit || o.s;
-          // Project towers get a thin dark rim (baked once) so their silhouette
-          // separates from neighbours and ground — the flat iso shading alone made
-          // depth hard to read. The hover halo overrides it when active.
+          // Dark rim (baked once) so a building's silhouette separates from its
+          // neighbours and the ground — flat iso shading alone made depth hard to
+          // read. Bold on project towers, subtle on ambient buildings. The hover
+          // halo overrides it when active; terrain/props get no rim.
           let drawName = nm;
-          if (!lit && o.pid !== undefined) {
-            if (!tiles[o.s + "@edge#0"]) bakeEdge(o.s, o.s + "@edge");
-            if (tiles[o.s + "@edge#0"]) drawName = o.s + "@edge";
+          if (!lit) {
+            if (o.pid !== undefined) {
+              const e = o.s + "@edge2";
+              if (!tiles[e + "#0"]) bakeEdge(o.s, e, 2);
+              if (tiles[e + "#0"]) drawName = e;
+            } else if (o.s && (o.s.indexOf("bldg") === 0 || o.s === "church")) {
+              const e = o.s + "@edge1";
+              if (!tiles[e + "#0"]) bakeEdge(o.s, e, 1);
+              if (tiles[e + "#0"]) drawName = e;
+            }
           }
           const sp = tiles[drawName + "#" + ((Math.floor(o.x + o.y) + slow) & 1)];
           const ex = (elev[Math.round(o.y)] || [])[Math.round(o.x)] || 0;
@@ -4057,11 +4055,13 @@
       // flat (saffron on phase 0, white on phase 1 -> it pulses on the 280ms
       // clock), with the sprite laid back on top. Grows the canvas by 1px on
       // each side, so the anchor shifts with it.
-      // A thin dark rim baked once around a project tower (near-black teal, both
-      // phases identical so it doesn't pulse). 8-direction 1px smear of the
-      // silhouette with the real sprite laid on top — reads as an ambient-occlusion
-      // edge that lifts the tower off its neighbours and the ground.
-      function bakeEdge(base, out) {
+      // A dark rim baked once around a building (near-black teal, both phases
+      // identical so it doesn't pulse). `grow` px of silhouette dilation with the
+      // real sprite laid on top — an ambient-occlusion edge that lifts a building
+      // off its neighbours and the ground. Project towers use a bold 2px rim,
+      // ambient buildings a subtle 1px one.
+      function bakeEdge(base, out, grow) {
+        const G = grow || 1;
         for (let ph = 0; ph < 2; ph++) {
           const src = tiles[base + "#" + ph];
           if (!src) return false;
@@ -4074,27 +4074,19 @@
           sg.fillStyle = "#06201f";
           sg.fillRect(0, 0, sil.width, sil.height);
           const c = document.createElement("canvas");
-          c.width = src.width + 2;
-          c.height = src.height + 2;
+          c.width = src.width + 2 * G;
+          c.height = src.height + 2 * G;
           const g = c.getContext("2d");
           g.imageSmoothingEnabled = false;
-          for (const [dx, dy] of [
-            [0, 1],
-            [2, 1],
-            [1, 0],
-            [1, 2],
-            [0, 0],
-            [2, 0],
-            [0, 2],
-            [2, 2],
-          ])
-            g.drawImage(sil, dx, dy); // full 1px ring
-          g.drawImage(src, 1, 1); // real sprite on top
+          for (let dx = -G; dx <= G; dx++)
+            for (let dy = -G; dy <= G; dy++)
+              g.drawImage(sil, dx + G, dy + G); // dilate the silhouette by G px
+          g.drawImage(src, G, G); // real sprite on top
           tiles[out + "#" + ph] = c;
         }
         const a0 = ANCHORX[base];
         ANCHORX[out] =
-          (a0 !== undefined ? a0 : tiles[base + "#0"].width / 2) + 1;
+          (a0 !== undefined ? a0 : tiles[base + "#0"].width / 2) + G;
         return true;
       }
 
