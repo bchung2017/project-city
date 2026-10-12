@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PROJECT CITY — BULLETIN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Patrick+Hand&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #2b2016;
+        --marker: "Permanent Marker", "Patrick Hand", ui-monospace, monospace;
+        --hand: "Patrick Hand", ui-monospace, Menlo, Consolas, monospace;
+        --mono: ui-monospace, Menlo, Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+      body {
+        /* the wall the board hangs on */
+        background: #3a2a1b;
+        font-family: var(--mono);
+        color: var(--ink);
+        padding: 18px;
+      }
+      /* ---- the cork board: wood frame + speckled cork ---- */
+      .board {
+        position: relative;
+        border: 16px solid #6b4a2b;
+        border-radius: 10px;
+        /* carved wood frame */
+        border-image: linear-gradient(135deg, #8a5a30, #5a3c22 40%, #7a5230 70%, #4e3420)
+          1;
+        box-shadow:
+          0 18px 40px rgba(0, 0, 0, 0.45),
+          inset 0 0 0 3px #4e3420;
+        background-color: #c69a5f;
+        /* cork speckle */
+        background-image:
+          radial-gradient(circle at 20% 30%, rgba(90, 60, 30, 0.35) 0 1.5px, transparent 2px),
+          radial-gradient(circle at 70% 60%, rgba(60, 40, 20, 0.3) 0 1.5px, transparent 2px),
+          radial-gradient(circle at 45% 80%, rgba(120, 85, 45, 0.3) 0 1.5px, transparent 2px),
+          radial-gradient(circle at 85% 20%, rgba(70, 45, 25, 0.3) 0 1.5px, transparent 2px),
+          radial-gradient(circle at 10% 70%, rgba(130, 95, 55, 0.25) 0 1.5px, transparent 2px);
+        background-size:
+          23px 23px,
+          31px 31px,
+          19px 19px,
+          37px 37px,
+          27px 27px;
+        padding: 30px 26px 48px;
+        min-height: calc(100vh - 36px);
+      }
+      /* ---- header: a marker sign nailed to the board ---- */
+      .masthead {
+        text-align: center;
+        margin: 4px 0 30px;
+        transform: rotate(-1.2deg);
+      }
+      .masthead h1 {
+        font-family: var(--marker);
+        font-size: clamp(34px, 6vw, 60px);
+        color: #fff8e7;
+        margin: 0;
+        letter-spacing: 1px;
+        text-shadow: 2px 3px 0 #3a2a1b, 0 0 14px rgba(0, 0, 0, 0.35);
+      }
+      .masthead p {
+        font-family: var(--hand);
+        font-size: clamp(16px, 2.4vw, 22px);
+        color: #fff2d6;
+        margin: 4px 0 0;
+        text-shadow: 1px 1px 0 #3a2a1b;
+      }
+      /* ---- the grid of pinned cards ---- */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 34px 30px;
+        align-items: start;
+      }
+      @media (max-width: 460px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      /* a pinned paper note */
+      .note {
+        position: relative;
+        background: #fcf8ec;
+        background-image: linear-gradient(180deg, #fffdf6, #f4edd8);
+        border: 1px solid #d8cda6;
+        border-radius: 3px;
+        padding: 30px 24px 24px;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.32), 0 2px 4px rgba(0, 0, 0, 0.25);
+        cursor: pointer;
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+      }
+      .note:hover {
+        transform: rotate(0deg) translateY(-4px) scale(1.015) !important;
+        box-shadow: 0 18px 30px rgba(0, 0, 0, 0.4);
+        z-index: 3;
+      }
+      /* the pushpin */
+      .pin {
+        position: absolute;
+        top: -13px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 34% 32%, #fff 0 3px, var(--pin, #e4392f) 4px 100%);
+        box-shadow: 0 3px 5px rgba(0, 0, 0, 0.4);
+      }
+      .pin::after {
+        /* the needle shadow under the pin */
+        content: "";
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        width: 2px;
+        height: 7px;
+        background: rgba(0, 0, 0, 0.3);
+        transform: translateX(-50%);
+      }
+      /* top row: building picture + name/status */
+      .head {
+        display: flex;
+        gap: 18px;
+        align-items: flex-end;
+      }
+      .pic {
+        flex: none;
+        width: 128px;
+        height: 170px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+      }
+      .meta {
+        flex: 1;
+        min-width: 0;
+      }
+      .name {
+        font-family: var(--marker);
+        font-size: clamp(24px, 3.4vw, 34px);
+        line-height: 1.02;
+        color: var(--ink);
+        word-break: break-word;
+        margin: 0 0 8px;
+      }
+      .status {
+        font-family: var(--hand);
+        font-size: 20px;
+        color: #6a4a2a;
+        letter-spacing: 0.5px;
+      }
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .tag {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #fff;
+        padding: 2px 7px;
+        border-radius: 2px;
+        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+      }
+      /* the headline: latest to-do */
+      .latest {
+        margin-top: 18px;
+        border-top: 3px dashed #cdbf97;
+        padding-top: 14px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .latest .lbl {
+        font-family: var(--hand);
+        font-size: 17px;
+        letter-spacing: 0.12em;
+        color: #c0392b;
+        margin-bottom: 6px;
+      }
+      .latest .todo {
+        font-family: var(--hand);
+        font-size: clamp(22px, 3vw, 30px);
+        line-height: 1.12;
+        color: #1c140c;
+        word-break: break-word;
+      }
+      .latest .todo.done {
+        text-decoration: line-through;
+        color: #8a7a5a;
+      }
+      .latest .none {
+        font-family: var(--hand);
+        font-size: 22px;
+        color: #a08a60;
+      }
+      .more {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: #8a764e;
+        margin-top: auto;
+        padding-top: 12px;
+        letter-spacing: 0.04em;
+      }
+      /* empty board */
+      .empty {
+        font-family: var(--hand);
+        text-align: center;
+        color: #fff2d6;
+        font-size: 24px;
+        padding: 80px 20px;
+        text-shadow: 1px 1px 0 #3a2a1b;
+      }
+      .empty a {
+        color: #ffd86b;
+      }
+      /* a little paper footer tab */
+      .footer {
+        text-align: center;
+        font-family: var(--hand);
+        font-size: 16px;
+        color: #fff2d6;
+        margin-top: 30px;
+        opacity: 0.85;
+        text-shadow: 1px 1px 0 #3a2a1b;
+      }
+      /* iso building glyph (ported from the project list / city) */
+      .iso {
+        position: relative;
+      }
+      .iso div {
+        position: absolute;
+        bottom: 0;
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    {{ nav|safe }}
+    <div class="board">
+      <div class="masthead">
+        <h1>📌 The Board</h1>
+        <p>every project standing in the city — freshest to-do pinned on top. grab it at a glance.</p>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="empty" id="empty" hidden></div>
+      <div class="footer">— pinned with coffee &amp; good intentions · project city —</div>
+    </div>
+
+    <script>
+      "use strict";
+      // ---- building-glyph helpers, ported from the list/city so a project's
+      // tower looks the same everywhere (colour seeded by id, height = stories).
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      function shade(hex, f) {
+        const n = parseInt(hex.slice(1), 16);
+        const r = Math.min(255, ((n >> 16) & 255) * f);
+        const g = Math.min(255, ((n >> 8) & 255) * f);
+        const b = Math.min(255, (n & 255) * f);
+        return (
+          "#" +
+          [r, g, b]
+            .map((v) => Math.round(v).toString(16).padStart(2, "0"))
+            .join("")
+        );
+      }
+      const BODY_POOL = ["#CE6B47", "#00B7B9", "#0090DC", "#27AE7E", "#B8B2A6", "#FFCC0F"];
+      function isoGlyph(project, k) {
+        const stories = project.stories || 1;
+        const seedRand = mulberry32((project.id * 2654435761) >>> 0);
+        const body = BODY_POOL[Math.floor(seedRand() * BODY_POOL.length)];
+        const W = 40 * k,
+          half = W / 2,
+          ry = 10 * k;
+        const h = Math.min(60, 8 + stories * 6) * k;
+        const total = h + ry * 2;
+        const el = document.createElement("div");
+        el.className = "iso";
+        el.style.width = W + "px";
+        el.style.height = total + "px";
+        const roof = document.createElement("div");
+        roof.style.cssText =
+          `width:${W}px;height:${ry * 2}px;bottom:${h}px;background:${body};` +
+          `clip-path:polygon(${half}px 0,${W}px ${ry}px,${half}px ${ry * 2}px,0 ${ry}px);`;
+        const fL = document.createElement("div");
+        fL.style.cssText =
+          `width:${half}px;height:${h + ry}px;left:0;background:${shade(body, 0.8)};` +
+          `clip-path:polygon(0 0,${half}px ${ry}px,${half}px ${h + ry}px,0 ${h}px);`;
+        const fR = document.createElement("div");
+        fR.style.cssText =
+          `width:${half}px;height:${h + ry}px;left:${half}px;background:${shade(body, 0.72)};` +
+          `clip-path:polygon(${half}px 0,${half}px ${h}px,0 ${h + ry}px,0 ${ry}px);`;
+        el.append(fL, fR, roof);
+        return el;
+      }
+
+      // pushpin colours, picked per project so the board looks hand-pinned
+      const PINS = ["#e4392f", "#2f7fe4", "#f0a81e", "#2fa84f", "#9b4fd1"];
+
+      const $grid = document.getElementById("grid");
+      const $empty = document.getElementById("empty");
+
+      function latestItem(items) {
+        if (!items || !items.length) return null;
+        // newest first: ISO created_at sorts chronologically; last-added (max pos)
+        // breaks ties / covers legacy items with no timestamp.
+        return items
+          .slice()
+          .sort(
+            (a, b) =>
+              (b.created_at || "").localeCompare(a.created_at || "") ||
+              (b.pos || 0) - (a.pos || 0),
+          )[0];
+      }
+
+      function card(p, i) {
+        const el = document.createElement("div");
+        el.className = "note";
+        // a casual pinned tilt, deterministic per project so it doesn't jump on poll
+        const rot = (((p.id * 37) % 9) - 4) * 0.7;
+        el.style.transform = `rotate(${rot}deg)`;
+        el.style.setProperty("--pin", PINS[p.id % PINS.length]);
+        el.title = "Open " + p.title + " in the project list";
+        el.onclick = () => (location.href = "/projects#p" + p.id);
+
+        const pin = document.createElement("div");
+        pin.className = "pin";
+
+        const head = document.createElement("div");
+        head.className = "head";
+        const pic = document.createElement("div");
+        pic.className = "pic";
+        pic.append(isoGlyph(p, 3));
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const name = document.createElement("h2");
+        name.className = "name";
+        name.textContent = p.title;
+        const done = (p.items || []).filter((it) => it.done).length;
+        const total = (p.items || []).length;
+        const status = document.createElement("div");
+        status.className = "status";
+        status.textContent =
+          (p.stories || 1) +
+          "F · " +
+          done +
+          "/" +
+          total +
+          " done · " +
+          (total - done) +
+          " open";
+        meta.append(name, status);
+        if (p.tags && p.tags.length) {
+          const tags = document.createElement("div");
+          tags.className = "tags";
+          p.tags.slice(0, 4).forEach((t) => {
+            const c = document.createElement("span");
+            c.className = "tag";
+            c.style.background = t.color || "#8a764e";
+            c.textContent = t.name;
+            tags.append(c);
+          });
+          meta.append(tags);
+        }
+        head.append(pic, meta);
+
+        const latest = document.createElement("div");
+        latest.className = "latest";
+        const lbl = document.createElement("div");
+        lbl.className = "lbl";
+        lbl.textContent = "📌 LATEST TO-DO";
+        const it = latestItem(p.items);
+        const todo = document.createElement("div");
+        if (it) {
+          todo.className = "todo" + (it.done ? " done" : "");
+          todo.textContent = it.text;
+        } else {
+          todo.className = "none";
+          todo.textContent = "— nothing on the list yet —";
+        }
+        latest.append(lbl, todo);
+        const openOthers = total - done - (it && !it.done ? 1 : 0);
+        if (openOthers > 0) {
+          const more = document.createElement("div");
+          more.className = "more";
+          more.textContent = "+ " + openOthers + " more open to-do" + (openOthers === 1 ? "" : "s");
+          latest.append(more);
+        }
+
+        el.append(pin, head, latest);
+        return el;
+      }
+
+      function render(projects) {
+        // only projects standing in the city (building toggle on)
+        const live = projects.filter((p) => p.render_progress);
+        $grid.replaceChildren(...live.map(card));
+        if (live.length) {
+          $empty.hidden = true;
+        } else {
+          $empty.hidden = false;
+          $empty.innerHTML = projects.length
+            ? "every project's City toggle is off, so the board's bare.<br>flip one ON in <a href='/projects'>Projects</a> to pin it up here."
+            : "the board's empty.<br>make a project in <a href='/projects'>Projects</a> and it'll show up here.";
+        }
+      }
+
+      async function load() {
+        try {
+          const res = await fetch("/api/projects");
+          if (res.status === 401) {
+            location.href = "/login";
+            return;
+          }
+          if (!res.ok) return;
+          render(await res.json());
+        } catch (e) {
+          /* offline / transient — keep the last board up */
+        }
+      }
+
+      load();
+      // keep the board fresh; it's read-only so a full re-render is safe
+      setInterval(load, 4000);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) load();
+      });
+    </script>
+  </body>
+</html>

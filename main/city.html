@@ -3719,14 +3719,11 @@
 
           const open = p.open | 0;
           if (open > 0) {
+            // Cranes removed for a cleaner, more legible skyline. The remaining
+            // ground gear (scaffold, materials, barriers) still marks a lot as
+            // under construction without the tall occluding masts.
             const G = lotGear(lot);
-            // The mast is a plain object; its slewing top is drawn per frame by
-            // cranesNow(), which lands on the same tile and so sorts right after
-            // the mast (equal depth key, stable sort) — on top of it, as it should.
-            const mh = craneMastH(TOWER_PX[nm]);
-            craneRigs.push({ x: G.crane[0], y: G.crane[1], mh, th0: p.id * 1.7 });
-            skylinePx = Math.max(skylinePx, mh + 30); // keep the jib in frame
-            const eq = [[craneMast(mh), ...G.crane]];
+            const eq = [];
             if (open >= 2) eq.push(["pcScaff", ...G.scaff]);
             if (open >= 3) eq.push(["pcMats", ...G.mats]);
             for (let k = 0; k < Math.min(G.barriers.length, open - 1); k++)
@@ -4018,8 +4015,7 @@
         const frame = objs
           .concat(projObjs)
           .concat(trafficNow(tms))
-          .concat(cranesNow(tms)) // last: a slew unit ties with its own mast, and
-          .sort((a, b) => a.x + a.y - (b.x + b.y) || a.y - b.y); // a stable sort keeps it on top
+          .sort((a, b) => a.x + a.y - (b.x + b.y) || a.y - b.y); // far first, near last; stable
         const act = activePid();
         for (const o of frame) {
           let lit = null;
@@ -4029,11 +4025,19 @@
             if (tiles[o.s + "@hi#0"]) lit = o.s + "@hi";
           }
           const nm = lit || o.s;
-          const sp = tiles[nm + "#" + ((Math.floor(o.x + o.y) + slow) & 1)];
+          // Project towers get a thin dark rim (baked once) so their silhouette
+          // separates from neighbours and ground — the flat iso shading alone made
+          // depth hard to read. The hover halo overrides it when active.
+          let drawName = nm;
+          if (!lit && o.pid !== undefined) {
+            if (!tiles[o.s + "@edge#0"]) bakeEdge(o.s, o.s + "@edge");
+            if (tiles[o.s + "@edge#0"]) drawName = o.s + "@edge";
+          }
+          const sp = tiles[drawName + "#" + ((Math.floor(o.x + o.y) + slow) & 1)];
           const ex = (elev[Math.round(o.y)] || [])[Math.round(o.x)] || 0;
           const cx = sx(o.x, o.y) + (TW / 2) * s;
           const cy = sy(o.x, o.y) + (TH / 2) * s - ex * EH * s;
-          const axr = ANCHORX[nm] !== undefined ? ANCHORX[nm] : sp.width / 2;
+          const axr = ANCHORX[drawName] !== undefined ? ANCHORX[drawName] : sp.width / 2;
           ctx.drawImage(
             sp,
             Math.round(cx - axr * s),
@@ -4053,6 +4057,47 @@
       // flat (saffron on phase 0, white on phase 1 -> it pulses on the 280ms
       // clock), with the sprite laid back on top. Grows the canvas by 1px on
       // each side, so the anchor shifts with it.
+      // A thin dark rim baked once around a project tower (near-black teal, both
+      // phases identical so it doesn't pulse). 8-direction 1px smear of the
+      // silhouette with the real sprite laid on top — reads as an ambient-occlusion
+      // edge that lifts the tower off its neighbours and the ground.
+      function bakeEdge(base, out) {
+        for (let ph = 0; ph < 2; ph++) {
+          const src = tiles[base + "#" + ph];
+          if (!src) return false;
+          const sil = document.createElement("canvas");
+          sil.width = src.width;
+          sil.height = src.height;
+          const sg = sil.getContext("2d");
+          sg.drawImage(src, 0, 0);
+          sg.globalCompositeOperation = "source-in";
+          sg.fillStyle = "#06201f";
+          sg.fillRect(0, 0, sil.width, sil.height);
+          const c = document.createElement("canvas");
+          c.width = src.width + 2;
+          c.height = src.height + 2;
+          const g = c.getContext("2d");
+          g.imageSmoothingEnabled = false;
+          for (const [dx, dy] of [
+            [0, 1],
+            [2, 1],
+            [1, 0],
+            [1, 2],
+            [0, 0],
+            [2, 0],
+            [0, 2],
+            [2, 2],
+          ])
+            g.drawImage(sil, dx, dy); // full 1px ring
+          g.drawImage(src, 1, 1); // real sprite on top
+          tiles[out + "#" + ph] = c;
+        }
+        const a0 = ANCHORX[base];
+        ANCHORX[out] =
+          (a0 !== undefined ? a0 : tiles[base + "#0"].width / 2) + 1;
+        return true;
+      }
+
       function bakeHalo(base, out) {
         for (let ph = 0; ph < 2; ph++) {
           const src = tiles[base + "#" + ph];
@@ -4316,7 +4361,7 @@
           if (wasDrag) return; // a pan, not a click — don't navigate
           const t = pickTower(e.clientX, e.clientY);
           if (t) {
-            location.href = "/#p" + t.pid; // hand off to the list page
+            location.href = "/projects#p" + t.pid; // hand off to the project list
             return;
           }
           pinPid = null;

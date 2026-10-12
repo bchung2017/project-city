@@ -37,6 +37,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 DATABASE_URL = os.environ["DATABASE_URL"]
 LIST_FILE = os.path.join(BASE, "list.html")
 CITY_FILE = os.path.join(BASE, "city.html")
+BULLETIN_FILE = os.path.join(BASE, "bulletin.html")
 PWA_DIR = os.path.join(BASE, "pwa")
 # Werkzeug doesn't know the .webmanifest extension and would serve it as
 # text/html, which strict browsers reject — register the spec MIME type so the
@@ -324,7 +325,8 @@ def nav_snippet(active):
         f"<style>{NAV_CSS}</style>\n"
         f'<div id="pcnav">'
         f'<div class="pcnav-cap">Project City</div>'
-        f'<a href="/"{cls("projects")}>Projects</a>'
+        f'<a href="/"{cls("bulletin")}>Bulletin</a>'
+        f'<a href="/projects"{cls("projects")}>Projects</a>'
         f'<a href="/city"{cls("city")}>City</a>'
         f"</div>\n"
     )
@@ -813,6 +815,13 @@ def project_json(row, items, tags=None, item_tags=None):
 
 @app.get("/")
 def index():
+    # The bulletin board is the landing page: a glanceable wall of the projects
+    # standing in the city, newest to-do up top.
+    return serve_page(BULLETIN_FILE, "bulletin")
+
+
+@app.get("/projects")
+def projects():
     return serve_page(LIST_FILE, "projects")
 
 

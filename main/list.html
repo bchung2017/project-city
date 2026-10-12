@@ -132,7 +132,9 @@ input:focus, textarea:focus { border-color: var(--saffron); }
 .item { border: 2px solid var(--ink); background: #FFFFFF; margin-bottom: 8px; }
 .item-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; }
 .item.done .item-text { text-decoration: line-through; color: var(--pewterDk); }
-.item-text { flex: 1; cursor: default; word-break: break-word; }
+.item-text { flex: 1; cursor: pointer; word-break: break-word; }
+.item-edit { flex: 1; font: inherit; color: inherit; padding: 1px 4px;
+  border: 2px solid var(--saff, #FFCC0F); background: #fff; min-width: 0; }
 .cb {
   width: 18px; height: 18px; flex: none; cursor: pointer;
   border: 2px solid var(--ink); background: var(--pewter);
@@ -1014,6 +1016,34 @@ function renderItem(project, item) {
   const text = document.createElement('span');
   text.className = 'item-text';
   text.textContent = item.text;
+  text.title = 'Click to edit';
+  // Don't let the card's select-on-mousedown rebuild the DOM out from under this
+  // click — otherwise the first click on an unselected card is swallowed.
+  text.onmousedown = e => e.stopPropagation();
+  text.onclick = () => {
+    const inp = document.createElement('input');
+    inp.className = 'item-edit';
+    inp.value = item.text;
+    inp.maxLength = 200;
+    inp.onkeydown = e => {
+      if (e.key === 'Enter') inp.blur();
+      if (e.key === 'Escape') { inp.value = item.text; inp.blur(); }
+    };
+    inp.onblur = () => {
+      const v = inp.value.trim();
+      if (v && v !== item.text) {
+        optimistic(
+          () => { item.text = v; },
+          () => apiBg('PATCH', '/api/items/' + item.id, { text: v }),
+        );
+      } else {
+        render();   // unchanged or emptied — restore the text span in place
+      }
+    };
+    text.replaceWith(inp);
+    inp.focus();
+    inp.select();
+  };
 
   // completion float: drag toward 1.00. Only 1.00 adds a story to the tower.
   const pct = document.createElement('label');
