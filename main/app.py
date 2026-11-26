@@ -372,6 +372,9 @@ def pwa_icon(name):
 
 def db():
     if "db" not in g:
+        # Ensure the schema exists before the first query — idempotent and cheap
+        # once done, and the lazy point where the app recovers after a DB outage.
+        ensure_schema()
         # dict_row gives rows that index by column name (row["title"]), matching
         # the old sqlite3.Row access. Foreign keys are always enforced in
         # Postgres, so there is no PRAGMA to enable. psycopg's Connection.execute()
@@ -1188,7 +1191,29 @@ def delete_item(iid):
     return "", 204
 
 
-init_db()
+# ---- schema readiness ------------------------------------------------------
+# Ensure the schema exists WITHOUT ever letting a database outage crash the
+# process. This used to be a bare init_db() at import time, so a paused or
+# unreachable Supabase took the whole service down in a boot crash-loop — the UI
+# could not even load, and a broken deploy stayed broken until the DB returned.
+# Now boot is best-effort and the schema is ensured lazily on the first DB use
+# (see db()), so the app serves its pages even while the DB is down and
+# self-heals when the database comes back, with no redeploy. CREATE TABLE IF NOT
+# EXISTS makes re-running it harmless.
+_schema_ready = False
+
+
+def ensure_schema():
+    global _schema_ready
+    if not _schema_ready:
+        init_db()
+        _schema_ready = True
+
+
+try:
+    ensure_schema()
+except Exception as exc:  # a down DB must not stop the app from booting
+    app.logger.warning("init_db at boot failed; will retry on first DB use: %s", exc)
 
 if __name__ == "__main__":
     # host="0.0.0.0" so the server is reachable from the Windows browser across
