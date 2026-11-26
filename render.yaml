@@ -9,14 +9,6 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --chdir main --bind 0.0.0.0:$PORT
     envVars:
-      # Render generates this once and persists it across deploys, so sessions
-      # survive a push. Never set it by hand.
-      - key: SECRET_KEY
-        generateValue: true
-      # Paste the scrypt hash into the Render dashboard. sync:false keeps it out
-      # of git.
-      - key: PW_HASH
-        sync: false
       # Supabase Session pooler URI (port 5432 on *.pooler.supabase.com — the
       # IPv4-compatible host; the direct db.*.supabase.co host is IPv6-only and
       # Render has no IPv6 egress). Paste it into the Render dashboard; sync:false

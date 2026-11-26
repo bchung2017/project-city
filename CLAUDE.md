@@ -33,7 +33,9 @@ DATABASE_URL=<supabase-session-pooler-uri> python main/app.py   # http://127.0.0
   fallback and crashes on boot if it's unset. Use the Supabase **session pooler**
   URI (port 5432 on `*.pooler.supabase.com`, the IPv4 host); the direct
   `db.*.supabase.co` host is IPv6-only and Render has no IPv6 egress.
-- `PW_HASH` (scrypt) gates the single-user login. Unset means login always fails.
+- There is **no auth** — the password login and session gate were removed, so
+  every route (including the API) is public. `DATABASE_URL` is the only required
+  env var.
 - Production runs under gunicorn, not `app.run`: `gunicorn app:app --chdir main`.
 
 ## Verifying a change
@@ -51,9 +53,8 @@ With a `DATABASE_URL` available you can boot it and hit `/healthz` (returns
 ## Conventions
 
 - **Never commit the database.** `*.db` is gitignored; live data is in Supabase.
-- **Never hand-set `SECRET_KEY`** — Render generates and persists it (see `render.yaml`).
-- Keep secrets (`DATABASE_URL`, `PW_HASH`) out of git; they're set in the Render
-  dashboard with `sync: false`.
+- Keep the `DATABASE_URL` credential out of git; it's set in the Render dashboard
+  with `sync: false`.
 - Match the existing style in `app.py`: terse, comment-heavy where behavior is
   non-obvious (pooler quirks, keepalive rationale, N+1 fixes). Don't reformat
   wholesale.

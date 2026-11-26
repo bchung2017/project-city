@@ -6,25 +6,17 @@ import json
 import mimetypes
 import os
 import re
-import time
-from datetime import datetime, timedelta, timezone
-from functools import wraps
+from datetime import datetime, timezone
 
 from flask import (
     Flask,
-    abort,
     g,
     jsonify,
-    redirect,
-    render_template_string,
     request,
     send_file,
     send_from_directory,
-    session,
-    url_for,
 )
 from werkzeug.middleware.proxy_fix import ProxyFix
-from werkzeug.security import check_password_hash
 
 import psycopg
 from psycopg.rows import dict_row
@@ -45,59 +37,20 @@ PWA_DIR = os.path.join(BASE, "pwa")
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 app = Flask(__name__)
 
-# ---- auth ------------------------------------------------------------------
-# Single-user login: one password, checked against a scrypt hash held in the
-# environment, and a Flask signed-session cookie. Render sets RENDER=true itself,
-# so no hand-rolled prod flag is needed.
+# ---- deployment --------------------------------------------------------------
+# The app is OPEN: the password login and the session auth gate were removed, so
+# every route is public. Render sets RENDER=true itself; it's used only to apply
+# ProxyFix in production.
 IS_PROD = os.environ.get("RENDER") == "true"
-
-if IS_PROD:
-    # Fail at boot rather than fall back to a known key — a default secret means
-    # anyone who reads this source can forge a session cookie.
-    SECRET_KEY = os.environ["SECRET_KEY"]
-    PW_HASH = os.environ["PW_HASH"]
-else:
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-not-a-secret")
-    # Dev default password: "city". Override with PW_HASH to test the real thing.
-    PW_HASH = os.environ.get(
-        "PW_HASH",
-        "scrypt:32768:8:1$ChhdePne5Duyg4rd$6f95dc643299c02eb6a962cc6ccfa6cd6903382f99b364a0"
-        "2873146c0cea2205d623b0f61a2681be13324510b553b72cadc926f6ff4761022eb0d0e37030b345",
-    )
-
-app.secret_key = SECRET_KEY
-app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    # Must be conditional: a Secure cookie is refused over http://localhost, so
-    # hardcoding True makes local login silently bounce back to the form.
-    SESSION_COOKIE_SECURE=IS_PROD,
-    SESSION_COOKIE_SAMESITE="Lax",
-    PERMANENT_SESSION_LIFETIME=timedelta(days=30),
-)
 
 if IS_PROD:
     # Render terminates TLS at its edge and forwards plain HTTP, so without this
     # Flask thinks every request is insecure and emits http:// external URLs.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# One user means brute force is the only attack surface worth caring about.
-LOGIN_MAX_TRIES = 10
-LOGIN_WINDOW = 60.0
-_login_hits = {}
 
 
-def rate_limited(ip):
-    now = time.time()
-    hits = [t for t in _login_hits.get(ip, []) if now - t < LOGIN_WINDOW]
-    _login_hits[ip] = hits
-    return len(hits) >= LOGIN_MAX_TRIES
-
-
-def record_attempt(ip):
-    _login_hits.setdefault(ip, []).append(time.time())
-
-
-# Injected into every served page (and the login screen) so the app is
+# Injected into every served page so the app is
 # installable from any entry point: links the manifest, sets the theme + iOS
 # home-screen chrome (iOS ignores the manifest for launch), and registers the
 # service worker on load.
@@ -114,89 +67,6 @@ if('serviceWorker' in navigator){addEventListener('load',function(){navigator.se
 </script>
 """
 
-
-LOGIN_HTML = """<!doctype html><meta charset=utf-8>
-<title>PROJECT CITY — LOGIN</title>
-<style>
-  body{margin:0;height:100vh;display:grid;place-items:center;background:#0E7C9B;
-       font:14px/1.4 ui-monospace,Menlo,Consolas,monospace;color:#08313F}
-  form{background:#F4EFE2;border:4px solid #08313F;box-shadow:6px 6px 0 #08313F;
-       padding:28px;min-width:280px}
-  h1{margin:0 0 18px;font-size:15px;letter-spacing:.14em}
-  input{width:100%;box-sizing:border-box;padding:10px;font:inherit;
-        border:3px solid #08313F;background:#fff;margin-bottom:14px}
-  button{width:100%;padding:10px;font:inherit;font-weight:700;letter-spacing:.1em;
-         border:3px solid #08313F;background:#FFCC0F;cursor:pointer}
-  .err{background:#F02D0E;color:#fff;padding:8px;margin-bottom:14px;font-size:12px}
-</style>
-<form method=post>
-  <h1>■ PROJECT CITY</h1>
-  {% if error %}<div class=err>{{ error }}</div>{% endif %}
-  <input type=password name=pw autofocus autocomplete=current-password placeholder=PASSWORD>
-  <button>ENTER</button>
-</form>"""
-
-
-LOGIN_ERRORS = {"pw": "WRONG PASSWORD", "rate": "TOO MANY TRIES — WAIT A MINUTE"}
-
-
-def _login_bounce(nxt, err):
-    # Post-Redirect-GET: a failed login answers with a redirect to the GET form
-    # (reason in ?err=), never an inline body on the POST. So reloading the page
-    # is a plain GET — no browser "confirm form resubmission" prompt / ERR_CACHE_MISS,
-    # and the form comes back cleanly with the error shown.
-    args = {"err": err}
-    if nxt:
-        args["next"] = nxt
-    return redirect(url_for("login", **args))
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        ip = request.remote_addr or "?"
-        nxt = request.args.get("next", "")
-        if rate_limited(ip):
-            return _login_bounce(nxt, "rate")
-        if check_password_hash(PW_HASH, request.form.get("pw", "")):
-            session.clear()
-            session.permanent = True
-            session["ok"] = True
-            return redirect(request.args.get("next") or url_for("index"))
-        record_attempt(ip)
-        return _login_bounce(nxt, "pw")
-    return render_template_string(
-        LOGIN_HTML.replace("</title>", "</title>" + PWA_HEAD),
-        error=LOGIN_ERRORS.get(request.args.get("err")),
-    )
-
-
-@app.route("/logout", methods=["POST"])
-def logout():
-    session.clear()
-    return redirect(url_for("login"))
-
-
-@app.before_request
-def require_login():
-    if session.get("ok") or request.endpoint in (
-        "login",
-        "static",
-        "healthz",
-        # PWA assets must serve publicly — the browser fetches the manifest, SW
-        # and icons before (and without) a session, and a login redirect here
-        # would make the app non-installable.
-        "manifest",
-        "service_worker",
-        "offline",
-        "pwa_icon",
-    ):
-        return
-    # The API answers 401 so fetch() sees a real failure instead of parsing a
-    # login page as JSON.
-    if request.path.startswith("/api/"):
-        abort(401)
-    return redirect(url_for("login", next=request.path))
 
 # Postgres port of the original SQLite schema:
 #   INTEGER PRIMARY KEY  -> SERIAL PRIMARY KEY (auto-increment identity)
@@ -471,8 +341,7 @@ def serve_page(filename, active):
 
 # ---- PWA: manifest, service worker, icons, offline shell -------------------
 # Served from the origin root (not /static/) so the manifest's root-absolute
-# paths resolve and the service worker's scope is the whole site. All four are
-# login-exempt (see require_login) so the browser can install the app.
+# paths resolve and the service worker's scope is the whole site.
 @app.get("/manifest.webmanifest")
 def manifest():
     return send_file(
@@ -832,10 +701,10 @@ def city():
 
 @app.get("/healthz")
 def healthz():
-    # Unauthenticated liveness probe (exempted in require_login). The one trivial
-    # query is deliberate: a scheduled ping to this endpoint keeps BOTH Render's
-    # free web service and the free Supabase project from going idle — hitting
-    # /login would wake Render but never touch Postgres. Leaks nothing.
+    # Liveness probe. The one trivial query is deliberate: a scheduled ping to
+    # this endpoint keeps BOTH Render's free web service and the free Supabase
+    # project from going idle — a static route would wake Render but never touch
+    # Postgres. Leaks nothing.
     db().execute("SELECT 1")
     return jsonify({"ok": True})
 
